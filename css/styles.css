@@ -1,0 +1,279 @@
+:root {
+    --bg-land: #F4F1EA;
+    --bg-water: #BCE0FD;
+    --bg-park: #E2EED6;
+    --text-main: #23272E;
+    --text-muted: #6E7685;
+    --panel-bg: rgba(255, 255, 255, 0.88);
+    --panel-border: rgba(35, 39, 46, 0.08);
+    --token-bg: #FFFFFF;
+    --token-shadow: 0 6px 18px -3px rgba(20, 24, 32, 0.14), 0 2px 5px -1px rgba(20, 24, 32, 0.07);
+}
+
+* {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--bg-land);
+    color: var(--text-main);
+    transition: background-color 0.8s cubic-bezier(0.22, 1, 0.36, 1), color 0.5s ease;
+}
+
+.font-mono-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: default;
+    touch-action: none;
+}
+
+canvas.hover-interactive {
+    cursor: pointer;
+}
+
+canvas.dragging-active {
+    cursor: grabbing;
+}
+
+/* Dinosaur Polo Club Minimalist Floating Surfaces */
+.dpc-pill {
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1.5px solid var(--panel-border);
+    box-shadow: var(--token-shadow);
+    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dpc-icon-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 9999px;
+    background: var(--panel-bg);
+    border: 1.5px solid var(--panel-border);
+    box-shadow: var(--token-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease, background-color 0.25s ease;
+}
+
+.dpc-icon-btn:hover {
+    transform: scale(1.12);
+}
+
+.dpc-icon-btn:active {
+    transform: scale(0.92);
+}
+
+/* Tactile Circular Resource Tokens (Bottom Dock like Mini Metro / Mini Motorways) */
+.dpc-token {
+    position: relative;
+    width: 50px;
+    height: 50px;
+    border-radius: 9999px;
+    background: var(--token-bg);
+    border: 2px solid var(--panel-border);
+    box-shadow: var(--token-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.25s ease,
+                border-color 0.25s ease,
+                width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                margin 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dpc-token:hover:not(.token-depleted) {
+    transform: translateY(-6px) scale(1.1);
+}
+
+.dpc-token:active:not(.token-depleted) {
+    cursor: grabbing;
+    transform: translateY(-2px) scale(0.95);
+}
+
+.dpc-token.active-tool {
+    transform: translateY(-9px) scale(1.14);
+    box-shadow: 0 14px 28px -4px rgba(20, 24, 32, 0.24);
+}
+
+.dpc-token.token-depleted {
+    opacity: 0.32;
+    transform: scale(0.86);
+    cursor: default;
+}
+
+.dpc-token.token-locked {
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    margin: 0 !important;
+    border-width: 0 !important;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.token-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Line Color Pills (Mini Metro style) */
+.line-token {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    border-radius: 9999px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
+    transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.3s ease,
+                box-shadow 0.25s ease;
+}
+
+.line-token:hover {
+    transform: translateY(-4px) scale(1.16);
+}
+
+.line-token.selected {
+    transform: translateY(-5px) scale(1.24);
+    box-shadow: 0 0 0 3px var(--bg-land), 0 0 0 5.5px currentColor, 0 8px 16px rgba(0,0,0,0.18);
+}
+
+.line-token.unused {
+    width: 24px;
+    height: 24px;
+    opacity: 0.55;
+}
+
+.line-token.unused.selected {
+    width: 32px;
+    height: 32px;
+    opacity: 1;
+}
+
+/* Score Pop Animation */
+@keyframes score-bump {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.22); }
+    100% { transform: scale(1); }
+}
+
+.score-pop {
+    animation: score-bump 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Weekly Upgrade Circular Card Pop (Mini Motorways Style) */
+@keyframes upgrade-bounce-in {
+    0% { opacity: 0; transform: translateY(36px) scale(0.82); }
+    70% { opacity: 1; transform: translateY(-4px) scale(1.03); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.upgrade-card-anim {
+    animation: upgrade-bounce-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* 3-Second Intro Network Animations */
+@keyframes intro-draw-line {
+    0% { stroke-dashoffset: 360; }
+    100% { stroke-dashoffset: 0; }
+}
+
+@keyframes intro-node-pop {
+    0% { transform: scale(0); opacity: 0; }
+    70% { transform: scale(1.18); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes intro-pulse-ring {
+    0% { transform: scale(0.85); opacity: 0.75; }
+    100% { transform: scale(1.85); opacity: 0; }
+}
+
+@keyframes intro-progress {
+    0% { transform: scaleX(0); }
+    100% { transform: scaleX(1); }
+}
+
+.intro-line-draw {
+    stroke-dasharray: 360;
+    stroke-dashoffset: 360;
+    animation: intro-draw-line 1.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.intro-node {
+    transform-box: fill-box;
+    transform-origin: center;
+    opacity: 0;
+    animation: intro-node-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.intro-pulse {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: intro-pulse-ring 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.intro-bar-fill {
+    transform-origin: left center;
+    animation: intro-progress 3s linear forwards;
+}
+
+#introSplash {
+    transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1), transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#introSplash.intro-hide {
+    opacity: 0;
+    transform: scale(1.06);
+    pointer-events: none;
+}
+
+.custom-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+    background: rgba(120, 125, 135, 0.28);
+    border-radius: 9999px;
+}

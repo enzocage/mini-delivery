@@ -1,0 +1,479 @@
+/***************************************************************************
+ * 4. CORE GAME STATE, AUTO-ZOOM CAMERA & ENTITY MANAGEMENT
+ ***************************************************************************/
+const state = {
+    cityIndex: 0,
+    nightMode: false,
+    endlessMode: false,
+    gameSpeed: 1,
+    score: 0,
+    scoreBySize: { S: 0, L: 0, XL: 0 },
+
+    // Time: 1 day = 16 seconds at 1x speed, 7 days = 1 week
+    timeOfDay: 8.0,
+    dayCount: 1,
+    weekCount: 1,
+    rushHourPulse: 0,
+
+    // Progressive Unlocks (Starts minimalist with 3 lines like Mini Metro, expands up to 7!)
+    unlockedLines: 3,
+    everUnlocked: {
+        bike: true,
+        drone: true,
+        bridges: true,
+        depot_S: true,
+        car: false,
+        depot_L: false,
+        depot_XL: false
+    },
+
+    // Player Inventory (Enough bridges & vehicles from Day 1 to cross rivers & scale far!)
+    inventory: {
+        depot_S: 1,
+        depot_L: 0,
+        depot_XL: 0,
+        drone: 1,
+        bike: 3,
+        car: 0,
+        bridges: 3
+    },
+
+    // Active Tool & Selection
+    activeTool: 'route',
+    selectedLineId: 0,
+    hoveredLineId: null,
+    inspectedNodeId: null,
+    tutorialCompleted: false,
+
+    // Entities
+    nodes: [],
+    lines: [],
+    drones: [],
+    ripples: [],
+    floatingTexts: [],
+    flyingPackages: [],
+
+    // Automatic Director Camera (Smoothly zooms out as the city grows!)
+    cam: {
+        x: 500, y: 325, zoom: 1.75,
+        targetX: 500, targetY: 325, targetZoom: 1.75,
+        manualOffsetTimer: 0
+    },
+
+    // Unified Pointer / Drag State
+    drag: {
+        active: false,
+        mode: null,
+        tokenType: null,
+        startNode: null,
+        anchorNode: null,
+        snapNode: null,
+        detachedNode: null,
+        canPullBackUnplug: false,
+        currWorldX: 500,
+        currWorldY: 325,
+        screenX: 0,
+        screenY: 0
+    },
+    hover: {
+        worldX: 500,
+        worldY: 325,
+        nodeId: null,
+        lineId: null,
+        terminalLineId: null,
+        connector: null
+    },
+
+    spawnTimer: 0,
+    packageTimer: 0,
+    warningTickTimer: 0,
+    nextId: 1
+};
+
+function getUID() {
+    return state.nextId++;
+}
+
+function currentCity() {
+    return CITIES[state.cityIndex];
+}
+
+function showFloatingText(x, y, text, color = '#F59E0B') {
+    state.floatingTexts.push({ x, y, text, color, alpha: 1.0 });
+}
+
+/***************************************************************************
+ * 5. AUTOMATIC CAMERA ZOOM & FRAMING ("zoom macht das spiel automatisch")
+ ***************************************************************************/
+function updateAutoCamera(rawDt, instant = false) {
+    if (state.nodes.length === 0) return;
+
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+
+    for (const n of state.nodes) {
+        const pad = n.kind === 'DEPOT' ? 42 : 34;
+        if (n.x - pad < minX) minX = n.x - pad;
+        if (n.x + pad > maxX) maxX = n.x + pad;
+        if (n.y - pad < minY) minY = n.y - pad;
+        if (n.y + pad > maxY) maxY = n.y + pad;
+    }
+
+    if (state.drag.active) {
+        const cx = Math.max(40, Math.min(WORLD_W - 40, state.drag.currWorldX));
+        const cy = Math.max(40, Math.min(WORLD_H - 40, state.drag.currWorldY));
+        minX = Math.min(minX, cx - 45);
+        maxX = Math.max(maxX, cx + 45);
+        minY = Math.min(minY, cy - 45);
+        maxY = Math.max(maxY, cy + 45);
+    }
+
+    const spanW = Math.max(240, maxX - minX);
+    const spanH = Math.max(170, maxY - minY);
+
+    const marginX = Math.min(130, window.innerWidth * 0.14);
+    const marginTop = 88;
+    const marginBottom = 138;
+
+    const availW = Math.max(280, window.innerWidth - marginX * 2);
+    const availH = Math.max(220, window.innerHeight - marginTop - marginBottom);
+
+    const zoomX = availW / (spanW + 90);
+    const zoomY = availH / (spanH + 80);
+
+    const idealZoom = Math.max(0.58, Math.min(1.76, Math.min(zoomX, zoomY)));
+
+    const centerX = (minX + maxX) * 0.5;
+    const centerY = (minY + maxY) * 0.5 + (marginBottom - marginTop) * 0.22 / idealZoom;
+
+    state.cam.targetX = centerX;
+    state.cam.targetY = centerY;
+    state.cam.targetZoom = idealZoom;
+
+    if (instant) {
+        state.cam.x = state.cam.targetX;
+        state.cam.y = state.cam.targetY;
+        state.cam.zoom = state.cam.targetZoom;
+    } else {
+        const camSpeed = state.drag.active ? 2.2 : 1.65;
+        state.cam.x = damp(state.cam.x, state.cam.targetX, camSpeed, rawDt);
+        state.cam.y = damp(state.cam.y, state.cam.targetY, camSpeed, rawDt);
+        state.cam.zoom = damp(state.cam.zoom, state.cam.targetZoom, camSpeed * 0.85, rawDt);
+    }
+}
+
+/***************************************************************************
+ * 6. INITIALIZATION & ENTITY CREATION
+ ***************************************************************************/
+function initCity(cityIdx) {
+    state.cityIndex = cityIdx;
+    const city = currentCity();
+
+    state.endlessMode = false;
+    state.gameSpeed = 1;
+    state.score = 0;
+    state.scoreBySize = { S: 0, L: 0, XL: 0 };
+    state.timeOfDay = 8.0;
+    state.dayCount = 1;
+    state.weekCount = 1;
+    state.rushHourPulse = 0;
+
+    state.unlockedLines = 3;
+    state.everUnlocked = {
+        bike: true,
+        drone: true,
+        bridges: true,
+        depot_S: true,
+        car: false,
+        depot_L: false,
+        depot_XL: false
+    };
+    state.inventory = {
+        depot_S: 1,
+        depot_L: 0,
+        depot_XL: 0,
+        drone: 1,
+        bike: 3,
+        car: 0,
+        bridges: 3
+    };
+
+    state.activeTool = 'route';
+    state.selectedLineId = 0;
+    state.hoveredLineId = null;
+    state.inspectedNodeId = null;
+    state.tutorialCompleted = false;
+
+    state.nodes = [];
+    state.drones = [];
+    state.ripples = [];
+    state.floatingTexts = [];
+    state.flyingPackages = [];
+    state.spawnTimer = 0;
+    state.packageTimer = 0;
+    state.nextId = 1;
+
+    state.lines = LINE_COLORS.map(c => ({
+        id: c.id,
+        name: c.name,
+        color: c.hex,
+        nodeIds: [],
+        bridgesUsed: 0,
+        vehicles: []
+    }));
+
+    // 1. Spawn Central Hauptdepot in a cozy central spot near the river
+    const mainPos = findValidLandSpot(city, 80, 160, true);
+    const mainDepot = createDepotNode('MAIN', mainPos.x, mainPos.y);
+    state.nodes.push(mainDepot);
+
+    // 2. Spawn 2 nearby S-Customer Stations on the same side of the river (no bridge forced on Day 1!)
+    for (let i = 0; i < 2; i++) {
+        const pos = findProgressiveLandSpot(city, mainDepot.x, mainDepot.y, 85, 145, 68, true);
+        const cust = createCustomerNode('S', pos.x, pos.y);
+        state.nodes.push(cust);
+        spawnOrderForCustomer(cust);
+    }
+
+    document.getElementById('uiCityName').textContent = city.name;
+    document.getElementById('uiCityRiver').textContent = city.riverName.split('&')[0].split(',')[0].trim();
+    document.getElementById('nodeInspector').classList.add('hidden');
+
+    const hintBanner = document.getElementById('uiHintBanner');
+    hintBanner.classList.remove('opacity-0');
+    document.getElementById('uiHintText').textContent = t('hint_initial');
+
+    applyThemeColors();
+    updateAutoCamera(1.0, true);
+    setGameSpeed(1);
+    updateAllUI();
+}
+
+function createDepotNode(depotType, x, y) {
+    const spec = DEPOT_SPECS[depotType];
+    const node = {
+        id: getUID(),
+        kind: 'DEPOT',
+        depotType,
+        label: getDepotLabel(depotType),
+        x, y,
+        radius: spec.radius,
+        capacity: spec.cap,
+        allowedSizes: spec.allowed,
+        droneRange: spec.droneRange,
+        storage: [],
+        scale: 0.05,
+        scaleVel: 0,
+        pulsePhase: Math.random() * Math.PI * 2
+    };
+    state.ripples.push({ x, y, r: 4, maxR: 68, color: spec.color, alpha: 0.95 });
+    return node;
+}
+
+function createCustomerNode(demandType, x, y) {
+    const node = {
+        id: getUID(),
+        kind: 'CUSTOMER',
+        demandType,
+        x, y,
+        radius: demandType === 'XL' ? 16.5 : (demandType === 'L' ? 14.5 : 13),
+        waitingOrders: [],
+        maxOrders: 6,
+        overloadTimer: 0,
+        scale: 0.05,
+        scaleVel: 0,
+        pulsePhase: Math.random() * Math.PI * 2
+    };
+    const col = demandType === 'S' ? '#0EA5E9' : (demandType === 'L' ? '#F59E0B' : '#F43F5E');
+    state.ripples.push({ x, y, r: 3, maxR: 52, color: col, alpha: 0.9 });
+    sfx.playSpawnBuilding(demandType);
+    return node;
+}
+
+function spawnOrderForCustomer(customer) {
+    if (customer.waitingOrders.length >= 8) return;
+    let size = customer.demandType;
+    if (customer.demandType === 'L' && Math.random() < 0.25) size = 'S';
+    if (customer.demandType === 'XL' && Math.random() < 0.20) size = 'L';
+
+    const orderId = getUID();
+    customer.waitingOrders.push({
+        id: orderId,
+        size,
+        customerId: customer.id,
+        scale: 0.05
+    });
+
+    const mainDepots = state.nodes.filter(n => n.kind === 'DEPOT' && (n.depotType === 'MAIN' || n.depotType === 'XL'));
+    if (mainDepots.length > 0) {
+        mainDepots.sort((a, b) => dist(a.x, a.y, customer.x, customer.y) - dist(b.x, b.y, customer.x, customer.y));
+        const sourceDepot = mainDepots[0];
+        if (sourceDepot.storage.length < sourceDepot.capacity) {
+            sourceDepot.storage.push({
+                id: orderId,
+                size,
+                targetCustomerId: customer.id,
+                scale: 0.05
+            });
+        }
+    }
+}
+
+function syncMainDepotSupply() {
+    const mainDepots = state.nodes.filter(n => n.kind === 'DEPOT' && n.depotType === 'MAIN');
+    if (mainDepots.length === 0) return;
+
+    const existingIds = new Set();
+    for (const n of state.nodes) {
+        if (n.kind === 'DEPOT') {
+            for (const p of n.storage) existingIds.add(p.id);
+        }
+    }
+    for (const d of state.drones) {
+        if (d.cargo) existingIds.add(d.cargo.id);
+    }
+    for (const line of state.lines) {
+        for (const v of line.vehicles) {
+            for (const p of v.cargo) existingIds.add(p.id);
+        }
+    }
+
+    for (const n of state.nodes) {
+        if (n.kind === 'CUSTOMER') {
+            for (const ord of n.waitingOrders) {
+                if (!existingIds.has(ord.id)) {
+                    mainDepots.sort((a, b) => dist(a.x, a.y, n.x, n.y) - dist(b.x, b.y, n.x, n.y));
+                    const targetMain = mainDepots[0];
+                    if (targetMain.storage.length < targetMain.capacity) {
+                        targetMain.storage.push({
+                            id: ord.id,
+                            size: ord.size,
+                            targetCustomerId: n.id,
+                            scale: 0.1
+                        });
+                        existingIds.add(ord.id);
+                    }
+                }
+            }
+        }
+    }
+}
+
+function spawnFlyingPackageArc(fromX, fromY, toX, toY, size) {
+    state.flyingPackages.push({
+        fromX, fromY,
+        toX, toY,
+        size,
+        t: 0,
+        duration: 0.22
+    });
+}
+
+function stationDroneAtNode(depotNode, freeFromStarter = false) {
+    if (!depotNode || depotNode.kind !== 'DEPOT') return false;
+    if (!freeFromStarter && state.inventory.drone <= 0) {
+        showFloatingText(depotNode.x, depotNode.y - 20, t('msg_no_drone'), '#EF4444');
+        return false;
+    }
+    if (!freeFromStarter) state.inventory.drone--;
+
+    depotNode.scaleVel = 3.2;
+
+    const countAtHub = state.drones.filter(d => d.homeNodeId === depotNode.id).length;
+    const orbitAngle = countAtHub * 2.1;
+    state.drones.push({
+        id: getUID(),
+        homeNodeId: depotNode.id,
+        x: depotNode.x + Math.cos(orbitAngle) * 16,
+        y: depotNode.y + Math.sin(orbitAngle) * 16,
+        vx: 0, vy: 0,
+        state: 'IDLE',
+        cargo: null,
+        pickupNodeId: null,
+        dropNodeId: null,
+        rotorPhase: Math.random() * 10,
+        scale: 0.1,
+        trail: []
+    });
+    sfx.playPlaceDepot('S');
+    updateAllUI();
+    return true;
+}
+
+function addVehicleToLine(line, vType, freeFromStarter = false, spawnX = null, spawnY = null) {
+    if (!line || line.nodeIds.length < 2) {
+        showFloatingText(state.cam.x, state.cam.y, t('msg_draw_line_first'), '#F59E0B');
+        return false;
+    }
+    if (!freeFromStarter && state.inventory[vType] <= 0) {
+        showFloatingText(state.cam.x, state.cam.y, t('msg_no_veh', { veh: getVehicleLabel(vType) }), '#EF4444');
+        return false;
+    }
+    if (!freeFromStarter) state.inventory[vType]--;
+
+    let segIdx = 0;
+    let startNode = state.nodes.find(n => n.id === line.nodeIds[0]);
+    if (spawnX !== null && spawnY !== null) {
+        let bestD = Infinity;
+        for (let i = 0; i < line.nodeIds.length - 1; i++) {
+            const n1 = state.nodes.find(n => n.id === line.nodeIds[i]);
+            const n2 = state.nodes.find(n => n.id === line.nodeIds[i + 1]);
+            if (!n1 || !n2) continue;
+            const d = distToSegment(spawnX, spawnY, n1.x, n1.y, n2.x, n2.y);
+            if (d < bestD) {
+                bestD = d;
+                segIdx = i;
+                startNode = n1;
+            }
+        }
+    }
+
+    line.vehicles.push({
+        id: getUID(),
+        type: vType,
+        lineId: line.id,
+        segIndex: segIdx,
+        progress: 0,
+        dir: 1,
+        x: startNode ? startNode.x : 500,
+        y: startNode ? startNode.y : 325,
+        angle: 0,
+        scale: 0.1,
+        bounceScale: 1.0,
+        cargo: [],
+        dwellTimer: 0.08
+    });
+    sfx.playConnect(false, line.id);
+    updateAllUI();
+    return true;
+}
+
+function recalculateLineBridges(line) {
+    state.inventory.bridges += line.bridgesUsed;
+    line.bridgesUsed = 0;
+
+    const city = currentCity();
+    let needed = 0;
+    for (let i = 0; i < line.nodeIds.length - 1; i++) {
+        const n1 = state.nodes.find(n => n.id === line.nodeIds[i]);
+        const n2 = state.nodes.find(n => n.id === line.nodeIds[i + 1]);
+        if (!n1 || !n2) continue;
+        if (doesMetroCorridorCrossWater(n1.x, n1.y, n2.x, n2.y, city)) {
+            needed++;
+        }
+    }
+    line.bridgesUsed = needed;
+    state.inventory.bridges -= needed;
+}
+
+function clearLine(line) {
+    if (!line) return;
+    for (const v of line.vehicles) {
+        state.inventory[v.type]++;
+    }
+    line.vehicles = [];
+    line.nodeIds = [];
+    recalculateLineBridges(line);
+    sfx.playDisconnect();
+    updateAllUI();
+}
