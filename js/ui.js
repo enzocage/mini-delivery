@@ -8,10 +8,16 @@ function setActiveTool(toolName) {
     });
 
     const hintBanner = document.getElementById('uiHintBanner');
+    const hintPill = document.getElementById('uiHintPill');
     const hintEl = document.getElementById('uiHintText');
+    if (hintBanner) hintBanner.classList.remove('opacity-0');
     if (state.activeTool === 'route') {
-        if (state.tutorialCompleted) hintBanner.classList.add('opacity-0');
-        else hintEl.textContent = t('hint_initial');
+        if (state.tutorialCompleted || state.simulatorMode) {
+            if (hintPill) hintPill.classList.add('hidden');
+        } else {
+            if (hintPill) hintPill.classList.remove('hidden');
+            if (hintEl) hintEl.textContent = t('hint_initial');
+        }
     } else {
         const hintKeys = {
             depot_S:  'hint_depot_s',
@@ -21,8 +27,8 @@ function setActiveTool(toolName) {
             bike:     'hint_bike',
             car:      'hint_car'
         };
-        hintEl.textContent = t(hintKeys[state.activeTool] || 'hint_initial');
-        hintBanner.classList.remove('opacity-0');
+        if (hintEl) hintEl.textContent = t(hintKeys[state.activeTool] || 'hint_initial');
+        if (hintPill) hintPill.classList.remove('hidden');
     }
 }
 
@@ -324,16 +330,34 @@ function triggerGameOver(overloadedNode) {
         const reason = (overloadedNode && overloadedNode.kind === 'DEPOT')
             ? t('go_sub_depot', { depot: getDepotLabel(overloadedNode.depotType) })
             : t('go_title_city', { city: city.name });
+        const simStats = state.simulatorMode
+            ? ` · ${state.dayCount}d (W${state.weekCount})`
+            : '';
+        const rerunBtnHtml = state.simulatorMode
+            ? `<button id="btnInlineSimRerun" class="px-3 py-1 rounded-full bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-extrabold uppercase tracking-wider shadow transition-transform active:scale-95 cursor-pointer">↻ AI Neu simulieren</button>`
+            : '';
         statusBar.innerHTML = `
-            <span class="text-rose-500">⚠️ ${reason} (${state.score})</span>
-            <button id="btnInlineEndless" class="px-3 py-1 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-extrabold uppercase tracking-wider shadow transition-transform active:scale-95">${t('go_endless')}</button>
-            <button id="btnInlineRestart" class="px-3 py-1 rounded-full bg-black/10 dark:bg-white/15 text-[11px] font-extrabold uppercase tracking-wider transition-transform active:scale-95">${t('go_restart')}</button>
+            <span class="text-rose-500">⚠️ ${reason} (${state.score}${simStats})</span>
+            ${rerunBtnHtml}
+            <button id="btnInlineEndless" class="px-3 py-1 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-extrabold uppercase tracking-wider shadow transition-transform active:scale-95 cursor-pointer">${t('go_endless')}</button>
+            <button id="btnInlineRestart" class="px-3 py-1 rounded-full bg-black/10 dark:bg-white/15 text-[11px] font-extrabold uppercase tracking-wider transition-transform active:scale-95 cursor-pointer">${t('go_restart')}</button>
         `;
         statusBar.classList.remove('hidden');
+        const btnRerun = document.getElementById('btnInlineSimRerun');
+        if (btnRerun) {
+            btnRerun.addEventListener('click', (e) => {
+                e.stopPropagation();
+                statusBar.classList.add('hidden');
+                launchGameFromStartScreen(true, true);
+            });
+        }
         document.getElementById('btnInlineEndless').addEventListener('click', (e) => {
             e.stopPropagation();
             statusBar.classList.add('hidden');
             document.getElementById('btnContinueEndless').click();
+            if (state.simulatorMode) {
+                setGameSpeed((state.simSpeedPercent || 100) / 100);
+            }
         });
         document.getElementById('btnInlineRestart').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -580,9 +604,11 @@ function openStartScreen(asFullStartScreen = false) {
     const setupView = document.getElementById('startSetupView');
     const helpView = document.getElementById('helpGuideView');
     const bottomLegend = document.getElementById('startBottomLegend');
+    const simBtn = document.getElementById('btnStartSimulatorMain');
     if (setupView) setupView.classList.toggle('hidden', hasStartedFirstGame);
     if (helpView) helpView.classList.toggle('hidden', !hasStartedFirstGame);
     if (bottomLegend) bottomLegend.classList.toggle('hidden', hasStartedFirstGame);
+    if (simBtn) simBtn.classList.toggle('hidden', hasStartedFirstGame);
 
     const searchInput = document.getElementById('startCitySearchInput');
     if (searchInput) searchInput.value = '';
@@ -607,29 +633,93 @@ function hideStartScreenOverlay() {
     }, 360);
 }
 
+function formatSimPercent(pct) {
+    return `${Math.round(pct).toLocaleString('de-DE')}%`;
+}
+
+function updateSimulatorHudUI() {
+    const simBar = document.getElementById('simulatorHudBar');
+    if (!simBar) return;
+    simBar.classList.toggle('hidden', !state.simulatorMode);
+    if (!state.simulatorMode) return;
+
+    const actionEl = document.getElementById('simAiActionLabel');
+    if (actionEl) {
+        const activeLines = state.lines.filter(l => l.id < state.unlockedLines && l.nodeIds.length >= 2);
+        const totalVeh = activeLines.reduce((acc, l) => acc + l.vehicles.length, 0);
+        const info = state.aiLastAction ? `${state.aiLastAction} · ` : '';
+        actionEl.textContent = `${info}${activeLines.length}L · ${totalVeh}V · ${state.drones.length}D`;
+    }
+
+    const badgeEl = document.getElementById('simSpeedBadge');
+    if (badgeEl) {
+        badgeEl.textContent = state.gameSpeed === 0 ? 'PAUSE' : formatSimPercent(state.simSpeedPercent || 100);
+    }
+}
+
+function setSimulatorSpeedFromExp(expVal) {
+    const clampedExp = Math.max(0, Math.min(4, Number(expVal) || 0));
+    const rawPct = 100 * Math.pow(10, clampedExp);
+    const pct = rawPct >= 1000 ? Math.round(rawPct / 50) * 50 : Math.round(rawPct);
+    state.simSpeedPercent = Math.max(100, Math.min(1000000, pct));
+
+    const slider = document.getElementById('simSpeedSlider');
+    if (slider && Math.abs(Number(slider.value) - clampedExp) > 0.005) {
+        slider.value = String(clampedExp);
+    }
+
+    document.querySelectorAll('.sim-preset-btn').forEach(btn => {
+        const isMatch = Math.abs(Number(btn.dataset.simExp) - clampedExp) < 0.08;
+        btn.classList.toggle('bg-emerald-500', isMatch);
+        btn.classList.toggle('text-white', isMatch);
+        btn.classList.toggle('bg-black/5', !isMatch);
+    });
+
+    setGameSpeed(state.simSpeedPercent / 100);
+    updateSimulatorHudUI();
+}
+
 function closeStartScreenAndResume() {
     if (!hasStartedFirstGame) {
-        launchGameFromStartScreen(true);
+        launchGameFromStartScreen(true, false);
         return;
     }
     hideStartScreenOverlay();
-    setGameSpeed(preScreenGameSpeed || 1);
+    setGameSpeed(preScreenGameSpeed || (state.simulatorMode ? (state.simSpeedPercent || 100) / 100 : 1));
 }
 
-function launchGameFromStartScreen(forceRestart = false) {
+function launchGameFromStartScreen(forceRestart = false, asSimulator = false) {
     const needsNewGame = !hasStartedFirstGame ||
         forceRestart ||
+        asSimulator !== state.simulatorMode ||
         selectedStartCityIndex !== state.cityIndex ||
         selectedStartDifficulty !== state.difficulty;
 
     if (needsNewGame) {
         state.difficulty = selectedStartDifficulty || state.difficulty || 'hard';
         try { localStorage.setItem('miniDelivery_difficulty', state.difficulty); } catch (err) {}
+        state.simulatorMode = Boolean(asSimulator);
         hasStartedFirstGame = true;
         initCity(selectedStartCityIndex);
-        setGameSpeed(1);
+
+        if (state.simulatorMode) {
+            state.tutorialCompleted = true;
+            const hintPill = document.getElementById('uiHintPill');
+            if (hintPill) hintPill.classList.add('hidden');
+            if (typeof updateAISimulator === 'function') {
+                state.aiDecisionTimer = 99;
+                updateAISimulator(1.0);
+            }
+            const slider = document.getElementById('simSpeedSlider');
+            const expVal = slider ? Number(slider.value) : 0;
+            setSimulatorSpeedFromExp(expVal);
+        } else {
+            state.simSpeedPercent = 100;
+            updateSimulatorHudUI();
+            setGameSpeed(1);
+        }
     } else {
-        setGameSpeed(preScreenGameSpeed || 1);
+        setGameSpeed(preScreenGameSpeed || (state.simulatorMode ? (state.simSpeedPercent || 100) / 100 : 1));
     }
     hideStartScreenOverlay();
 }
@@ -746,11 +836,14 @@ function applyThemeColors() {
 function setGameSpeed(spd) {
     state.gameSpeed = spd;
     document.querySelectorAll('.speed-btn').forEach(btn => {
-        const active = Number(btn.dataset.speed) === spd;
+        const active = Number(btn.dataset.speed) === spd || (spd > 3 && Number(btn.dataset.speed) === 3);
         btn.classList.toggle('bg-amber-500', active);
         btn.classList.toggle('text-white', active);
         btn.classList.toggle('shadow-sm', active);
     });
+    if (typeof updateSimulatorHudUI === 'function') {
+        updateSimulatorHudUI();
+    }
 }
 
 function setLanguage(langCode) {
@@ -774,11 +867,20 @@ function cycleLanguage() {
 }
 
 document.querySelectorAll('.speed-btn').forEach(btn => {
-    btn.addEventListener('click', () => setGameSpeed(Number(btn.dataset.speed)));
+    btn.addEventListener('click', () => {
+        const s = Number(btn.dataset.speed);
+        if (state.simulatorMode && s > 0) {
+            state.simSpeedPercent = s * 100;
+            const slider = document.getElementById('simSpeedSlider');
+            if (slider) slider.value = String(Math.log10(s));
+        }
+        setGameSpeed(s);
+    });
 });
 
 document.getElementById('btnClockTogglePause').addEventListener('click', () => {
-    setGameSpeed(state.gameSpeed === 0 ? 1 : 0);
+    const resumeSpd = state.simulatorMode ? (state.simSpeedPercent || 100) / 100 : 1;
+    setGameSpeed(state.gameSpeed === 0 ? resumeSpd : 0);
 });
 
 document.getElementById('btnToggleTheme').addEventListener('click', () => {
@@ -928,7 +1030,42 @@ const btnStartGameMain = document.getElementById('btnStartGameMain');
 if (btnStartGameMain) {
     btnStartGameMain.addEventListener('click', (e) => {
         e.stopPropagation();
-        launchGameFromStartScreen(false);
+        launchGameFromStartScreen(false, false);
+    });
+}
+
+const btnStartSimulatorMain = document.getElementById('btnStartSimulatorMain');
+if (btnStartSimulatorMain) {
+    btnStartSimulatorMain.addEventListener('click', (e) => {
+        e.stopPropagation();
+        launchGameFromStartScreen(true, true);
+    });
+}
+
+const simSpeedSlider = document.getElementById('simSpeedSlider');
+if (simSpeedSlider) {
+    simSpeedSlider.addEventListener('input', (e) => {
+        e.stopPropagation();
+        setSimulatorSpeedFromExp(Number(e.target.value));
+    });
+}
+
+document.querySelectorAll('.sim-preset-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setSimulatorSpeedFromExp(Number(btn.dataset.simExp));
+    });
+});
+
+const btnSimTakeOver = document.getElementById('btnSimTakeOver');
+if (btnSimTakeOver) {
+    btnSimTakeOver.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.simulatorMode = false;
+        state.simSpeedPercent = 100;
+        updateSimulatorHudUI();
+        setGameSpeed(1);
+        showFloatingText(state.cam.x, state.cam.y - 24, '🎮 Manual Control Active', '#F59E0B');
     });
 }
 

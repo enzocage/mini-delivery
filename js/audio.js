@@ -5,6 +5,7 @@ class SoundEngine {
     constructor() {
         this.ctx = null;
         this.enabled = true;
+        this.lastToneTime = 0;
         // C Major 9th / Pentatonic harmonic palette (like Mini Metro)
         this.scale = [261.63, 293.66, 329.63, 392.00, 440.00, 493.88, 523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
     }
@@ -19,6 +20,10 @@ class SoundEngine {
     }
     playTone(freq, type = 'sine', duration = 0.28, vol = 0.10, slideTo = null, attack = 0.015) {
         if (!this.enabled) return;
+        if (typeof state !== 'undefined' && state.isFastSimSubStep) return;
+        const wallNow = performance.now();
+        if (wallNow - this.lastToneTime < 28) return;
+        this.lastToneTime = wallNow;
         this.init();
         if (!this.ctx) return;
         try {

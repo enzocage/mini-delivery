@@ -167,7 +167,8 @@ const I18N = {
         diff_hardcore_desc: 'Relentless: Overload at 3 orders (2 for XL), 1.45× alarm speed & tight HQ!',
         diff_chuck_short: 'CHUCK',
         diff_chuck_name: 'Chuck Norris',
-        diff_chuck_desc: '2 waiting orders trigger instant alarm (2.15×), 1 starting bike & early XL chaos!'
+        diff_chuck_desc: '2 waiting orders trigger instant alarm (2.15×), 1 starting bike & early XL chaos!',
+        sim_start_btn: 'Simulator Mode (AI)'
     },
 
     de: {
@@ -316,7 +317,8 @@ const I18N = {
         diff_hardcore_desc: 'Gnadenlos: Alarm schon ab 3 Paketen (2 bei XL), 1,45× Countdown & enges HQ!',
         diff_chuck_short: 'CHUCK',
         diff_chuck_name: 'Chuck Norris',
-        diff_chuck_desc: 'Alarm ab 2 wartenden Paketen (2,15× Tempo), nur 1 Start-Bike & frühes XL-Chaos!'
+        diff_chuck_desc: 'Alarm ab 2 wartenden Paketen (2,15× Tempo), nur 1 Start-Bike & frühes XL-Chaos!',
+        sim_start_btn: 'Simulator-Modus (AI)'
     },
 
     fr: {
@@ -465,7 +467,8 @@ const I18N = {
         diff_hardcore_desc: 'Impitoyable : alarme dès 3 colis (2 pour XL), alarme 1,45× plus rapide !',
         diff_chuck_short: 'CHUCK',
         diff_chuck_name: 'Chuck Norris',
-        diff_chuck_desc: 'Alarme dès 2 colis en attente (vitesse 2,15×), 1 seul vélo de départ & chaos XL !'
+        diff_chuck_desc: 'Alarme dès 2 colis en attente (vitesse 2,15×), 1 seul vélo de départ & chaos XL !',
+        sim_start_btn: 'Mode Simulateur (IA)'
     },
 
     es: {
@@ -614,7 +617,8 @@ const I18N = {
         diff_hardcore_desc: 'Implacable: alarma con 3 paquetes (2 en XL), temporizador 1,45× más rápido.',
         diff_chuck_short: 'CHUCK',
         diff_chuck_name: 'Chuck Norris',
-        diff_chuck_desc: '¡Alarma con solo 2 paquetes (2,15× velocidad), 1 moto inicial y caos XL temprano!'
+        diff_chuck_desc: '¡Alarma con solo 2 paquetes (2,15× velocidad), 1 moto inicial y caos XL temprano!',
+        sim_start_btn: 'Modo Simulador (IA)'
     },
 
     zh: {
@@ -763,7 +767,8 @@ const I18N = {
         diff_hardcore_desc: '冷酷挑战：3件包裹即告警 (XL仅2件)、1.45倍倒计时速度！',
         diff_chuck_short: '诺里斯',
         diff_chuck_name: 'Chuck Norris (地狱)',
-        diff_chuck_desc: '积压2件立即告警 (2.15倍极速)、仅1辆初始摩托与第一周XL重货突袭！'
+        diff_chuck_desc: '积压2件立即告警 (2.15倍极速)、仅1辆初始摩托与第一周XL重货突袭！',
+        sim_start_btn: 'AI 模拟器模式'
     }
 };
 

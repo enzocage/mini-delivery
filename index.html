@@ -194,11 +194,17 @@
                 </div>
             </div>
 
-            <!-- Sculptural Primary Play / Resume Pill Button -->
-            <button id="btnStartGameMain" class="mt-4 px-9 py-3.5 rounded-full bg-[#23272E] hover:bg-amber-500 text-white font-extrabold text-xs sm:text-sm uppercase tracking-[0.16em] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 cursor-pointer">
-                <span class="text-amber-400">▶</span>
-                <span id="startScreenBtnLabel">Start: Berlin</span>
-            </button>
+            <!-- Sculptural Primary Play / Resume & AI Simulator Pill Buttons -->
+            <div class="mt-4 flex flex-wrap items-center justify-center gap-3">
+                <button id="btnStartGameMain" class="px-8 py-3.5 rounded-full bg-[#23272E] hover:bg-amber-500 text-white font-extrabold text-xs sm:text-sm uppercase tracking-[0.16em] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 cursor-pointer">
+                    <span class="text-amber-400">▶</span>
+                    <span id="startScreenBtnLabel">Start: Berlin</span>
+                </button>
+                <button id="btnStartSimulatorMain" class="px-6 py-3.5 rounded-full bg-white/90 hover:bg-emerald-500 text-[#23272E] hover:text-white border border-black/10 font-extrabold text-xs sm:text-sm uppercase tracking-[0.14em] shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2.5 cursor-pointer" title="AI plays the entire city automatically with a 100% to 1,000,000% time slider">
+                    <span>🤖</span>
+                    <span id="startSimulatorBtnLabel" data-i18n="sim_start_btn">Simulator-Modus (AI)</span>
+                </button>
+            </div>
         </div>
 
         <!-- 3. BOTTOM WHISPER-MINIMALIST VISUAL LEGEND PILL -->
@@ -323,9 +329,34 @@
 
     <!-- SUBTLE FLOATING TUTORIAL / CONTEXTUAL WHISPER & INLINE NON-POPUP BANNERS -->
     <div id="uiHintBanner" class="fixed top-20 left-1/2 -translate-x-1/2 z-10 pointer-events-none transition-all duration-500 flex flex-col items-center gap-2">
-        <div class="dpc-pill rounded-full px-4 py-1.5 text-xs font-bold flex items-center gap-2">
+        <div id="uiHintPill" class="dpc-pill rounded-full px-4 py-1.5 text-xs font-bold flex items-center gap-2">
             <span id="uiHintDot" class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
             <span id="uiHintText" data-i18n="hint_initial">Drag a line from the Main Depot (HQ) to the customer stations</span>
+        </div>
+        <!-- AI SIMULATOR TIME-SLIDER HUD BAR (100% to 1,000,000%) -->
+        <div id="simulatorHudBar" class="hidden pointer-events-auto dpc-pill rounded-full px-4 py-2 flex flex-wrap items-center justify-center gap-2.5 shadow-xl text-xs">
+            <div class="flex items-center gap-1.5 font-extrabold text-emerald-600 dark:text-emerald-400">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>🤖 AI SIM</span>
+                <span id="simAiActionLabel" class="font-mono-num text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Auto-Logistik</span>
+            </div>
+            <div class="h-4 w-px bg-current opacity-15 hidden sm:block"></div>
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-extrabold uppercase tracking-wider opacity-60">100%</span>
+                <input id="simSpeedSlider" type="range" min="0" max="4" step="0.01" value="0" class="w-32 sm:w-44 accent-emerald-500 cursor-pointer h-1.5 rounded-lg" title="Simulation Speed (100% – 1,000,000%)">
+                <span class="text-[10px] font-extrabold uppercase tracking-wider opacity-60">1.000.000%</span>
+                <span id="simSpeedBadge" class="font-mono-num font-extrabold text-xs px-2.5 py-0.5 rounded-full bg-[#23272E] text-amber-400 min-w-[78px] text-center">100%</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <button type="button" data-sim-exp="0" class="sim-preset-btn px-2 py-0.5 rounded-full text-[10px] font-mono-num font-extrabold bg-black/5 hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer">100%</button>
+                <button type="button" data-sim-exp="1" class="sim-preset-btn px-2 py-0.5 rounded-full text-[10px] font-mono-num font-extrabold bg-black/5 hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer">1k%</button>
+                <button type="button" data-sim-exp="2" class="sim-preset-btn px-2 py-0.5 rounded-full text-[10px] font-mono-num font-extrabold bg-black/5 hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer">10k%</button>
+                <button type="button" data-sim-exp="3" class="sim-preset-btn px-2 py-0.5 rounded-full text-[10px] font-mono-num font-extrabold bg-black/5 hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer">100k%</button>
+                <button type="button" data-sim-exp="4" class="sim-preset-btn px-2 py-0.5 rounded-full text-[10px] font-mono-num font-extrabold bg-black/5 hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer">1M%</button>
+            </div>
+            <button id="btnSimTakeOver" type="button" class="px-2.5 py-0.5 rounded-full bg-amber-500/15 hover:bg-amber-500 text-amber-600 hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition-colors cursor-pointer" title="Stop AI and continue playing manually">
+                🎮 Manual
+            </button>
         </div>
         <!-- Inline Non-Popup Weekly Resource Pill Bar -->
         <div id="inlineUpgradeBar" class="hidden pointer-events-auto dpc-pill rounded-full px-3 py-1.5 flex flex-wrap items-center justify-center gap-2 shadow-lg"></div>

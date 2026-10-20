@@ -842,10 +842,10 @@ const WORLD_W = 1000;
 const WORLD_H = 650;
 
 const DEPOT_SPECS = {
-    MAIN: { labelKey: 'depot_main', label: 'Main Depot',     cap: 24, allowed: ['S', 'L', 'XL'], radius: 22, droneRange: 255, color: '#F59E0B' },
-    S:    { labelKey: 'depot_s',    label: 'S Micro-Hub',    cap: 6,  allowed: ['S'],            radius: 15, droneRange: 215, color: '#0EA5E9' },
-    L:    { labelKey: 'depot_l',    label: 'L Regional Hub', cap: 12, allowed: ['S', 'L'],       radius: 17, droneRange: 245, color: '#F59E0B' },
-    XL:   { labelKey: 'depot_xl',   label: 'XL Mega-Hub',    cap: 20, allowed: ['S', 'L', 'XL'], radius: 20, droneRange: 280, color: '#F43F5E' }
+    MAIN: { labelKey: 'depot_main', label: 'Main Depot',     cap: 44, allowed: ['S', 'L', 'XL'], radius: 22, droneRange: 255, color: '#F59E0B' },
+    S:    { labelKey: 'depot_s',    label: 'S Micro-Hub',    cap: 10, allowed: ['S'],            radius: 15, droneRange: 215, color: '#0EA5E9' },
+    L:    { labelKey: 'depot_l',    label: 'L Regional Hub', cap: 18, allowed: ['S', 'L'],       radius: 17, droneRange: 245, color: '#F59E0B' },
+    XL:   { labelKey: 'depot_xl',   label: 'XL Mega-Hub',    cap: 30, allowed: ['S', 'L', 'XL'], radius: 20, droneRange: 280, color: '#F43F5E' }
 };
 
 const VEHICLE_SPECS = {

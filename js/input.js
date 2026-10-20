@@ -433,7 +433,8 @@ function connectNodesOnLine(line, nodeA, nodeB) {
 
         if (!state.tutorialCompleted) {
             state.tutorialCompleted = true;
-            document.getElementById('uiHintBanner').classList.add('opacity-0');
+            const pill = document.getElementById('uiHintPill');
+            if (pill) pill.classList.add('hidden');
         }
 
         const needsXL = (nodeB.demandType === 'XL' || nodeA.demandType === 'XL');

@@ -122,6 +122,12 @@ const state = {
     victoryReached: false,
     starsEarned: 0,
     gameSpeed: 1,
+    simulatorMode: false,
+    simSpeedPercent: 100,
+    aiDecisionTimer: 0,
+    aiRebalanceTimer: 0,
+    aiLastAction: '',
+    isFastSimSubStep: false,
     score: 0,
     scoreBySize: { S: 0, L: 0, XL: 0 },
 
@@ -222,6 +228,7 @@ function currentCity() {
 }
 
 function showFloatingText(x, y, text, color = '#F59E0B') {
+    if (state.floatingTexts.length > 24) state.floatingTexts.shift();
     state.floatingTexts.push({ x, y, text, color, alpha: 1.0 });
 }
 
@@ -350,6 +357,10 @@ function initCity(cityIdx) {
     state.flyingPackages = [];
     state.spawnTimer = 0;
     state.packageTimer = 0;
+    state.aiDecisionTimer = 0;
+    state.aiRebalanceTimer = 0;
+    state.aiLastAction = '';
+    state.isFastSimSubStep = false;
     state.nextId = 1;
 
     state.lines = LINE_COLORS.map(c => ({
@@ -386,7 +397,9 @@ function initCity(cityIdx) {
     if (statusBar) { statusBar.classList.add('hidden'); statusBar.innerHTML = ''; }
 
     const hintBanner = document.getElementById('uiHintBanner');
-    hintBanner.classList.remove('opacity-0');
+    if (hintBanner) hintBanner.classList.remove('opacity-0');
+    const hintPill = document.getElementById('uiHintPill');
+    if (hintPill) hintPill.classList.toggle('hidden', Boolean(state.simulatorMode));
     document.getElementById('uiHintText').textContent = t('hint_initial');
 
     applyThemeColors();
@@ -415,6 +428,7 @@ function createDepotNode(depotType, x, y) {
         scaleVel: 0,
         pulsePhase: Math.random() * Math.PI * 2
     };
+    if (state.ripples.length > 35) state.ripples.shift();
     state.ripples.push({ x, y, r: 4, maxR: 68, color: spec.color, alpha: 0.95 });
     return node;
 }
@@ -430,11 +444,12 @@ function createCustomerNode(demandType, x, y) {
         waitingOrders: [],
         maxOrders: demandType === 'XL' ? dSpec.maxOrdersXL : dSpec.maxOrdersSL,
         overloadTimer: 0,
-        scale: 0.05,
+        scale: state.isFastSimSubStep ? 1.0 : 0.05,
         scaleVel: 0,
         pulsePhase: Math.random() * Math.PI * 2
     };
     const col = demandType === 'S' ? '#0EA5E9' : (demandType === 'L' ? '#F59E0B' : '#F43F5E');
+    if (state.ripples.length > 35) state.ripples.shift();
     state.ripples.push({ x, y, r: 3, maxR: 52, color: col, alpha: 0.9 });
     sfx.playSpawnBuilding(demandType);
     return node;
@@ -454,24 +469,82 @@ function spawnOrderForCustomer(customer) {
         scale: 0.05
     });
 
-    const mainDepots = state.nodes.filter(n => n.kind === 'DEPOT' && (n.depotType === 'MAIN' || n.depotType === 'XL'));
-    if (mainDepots.length > 0) {
-        mainDepots.sort((a, b) => dist(a.x, a.y, customer.x, customer.y) - dist(b.x, b.y, customer.x, customer.y));
-        const sourceDepot = mainDepots[0];
-        if (sourceDepot.storage.length < sourceDepot.capacity) {
-            sourceDepot.storage.push({
-                id: orderId,
-                size,
-                targetCustomerId: customer.id,
-                scale: 0.05
-            });
-        }
+    const supplyDepots = state.nodes.filter(n =>
+        n.kind === 'DEPOT' &&
+        n.allowedSizes.includes(size) &&
+        n.storage.length < n.capacity &&
+        (n.depotType === 'MAIN' ||
+         state.lines.some(l => l.nodeIds.includes(n.id) && l.nodeIds.includes(customer.id) && l.vehicles.length > 0))
+    );
+    if (supplyDepots.length > 0) {
+        supplyDepots.sort((a, b) => {
+            const fillA = a.storage.length / Math.max(1, a.capacity);
+            const fillB = b.storage.length / Math.max(1, b.capacity);
+            if (Math.abs(fillA - fillB) > 0.25) return fillA - fillB;
+            return dist(a.x, a.y, customer.x, customer.y) - dist(b.x, b.y, customer.x, customer.y);
+        });
+        const sourceDepot = supplyDepots[0];
+        sourceDepot.storage.push({
+            id: orderId,
+            size,
+            targetCustomerId: customer.id,
+            scale: state.isFastSimSubStep ? 1.0 : 0.05
+        });
     }
 }
 
 function syncMainDepotSupply() {
     const mainDepots = state.nodes.filter(n => n.kind === 'DEPOT' && n.depotType === 'MAIN');
     if (mainDepots.length === 0) return;
+
+    // 1. Collect all valid active waitingOrder IDs across all customer stations
+    const validOrderIds = new Set();
+    for (const n of state.nodes) {
+        if (n.kind === 'CUSTOMER') {
+            for (const ord of n.waitingOrders) {
+                validOrderIds.add(ord.id);
+            }
+        }
+    }
+
+    // 2. Purge any stale/orphan packages in Depots whose order was already fulfilled
+    for (const n of state.nodes) {
+        if (n.kind === 'DEPOT') {
+            for (let i = n.storage.length - 1; i >= 0; i--) {
+                if (!validOrderIds.has(n.storage[i].id)) {
+                    n.storage.splice(i, 1);
+                }
+            }
+        }
+    }
+
+    // If any MAIN depot is above 65% capacity, offload compatible packages to connected S/L/XL buffer hubs on the same line
+    const bufferHubs = state.nodes.filter(n =>
+        n.kind === 'DEPOT' && n.depotType !== 'MAIN' &&
+        n.storage.length < Math.floor(n.capacity * 0.75)
+    );
+    if (bufferHubs.length > 0) {
+        for (const m of mainDepots) {
+            while (m.storage.length > Math.floor(m.capacity * 0.65)) {
+                let moved = false;
+                for (let i = m.storage.length - 1; i >= 0; i--) {
+                    const pkg = m.storage[i];
+                    const hub = bufferHubs.find(h =>
+                        h.allowedSizes.includes(pkg.size) &&
+                        h.storage.length < Math.floor(h.capacity * 0.75) &&
+                        state.lines.some(l => l.nodeIds.includes(h.id) && l.nodeIds.includes(pkg.targetCustomerId) && l.vehicles.length > 0)
+                    );
+                    if (hub) {
+                        m.storage.splice(i, 1);
+                        hub.storage.push(pkg);
+                        moved = true;
+                        break;
+                    }
+                }
+                if (!moved) break;
+            }
+        }
+    }
 
     const existingIds = new Set();
     for (const n of state.nodes) {
@@ -510,6 +583,7 @@ function syncMainDepotSupply() {
 }
 
 function spawnFlyingPackageArc(fromX, fromY, toX, toY, size) {
+    if (state.isFastSimSubStep && state.flyingPackages.length > 16) return;
     state.flyingPackages.push({
         fromX, fromY,
         toX, toY,
@@ -542,11 +616,11 @@ function stationDroneAtNode(depotNode, freeFromStarter = false) {
         pickupNodeId: null,
         dropNodeId: null,
         rotorPhase: Math.random() * 10,
-        scale: 0.1,
+        scale: state.isFastSimSubStep ? 1.0 : 0.1,
         trail: []
     });
     sfx.playPlaceDepot('S');
-    updateAllUI();
+    if (!state.isFastSimSubStep) updateAllUI();
     return true;
 }
 
@@ -617,7 +691,7 @@ function addVehicleToLine(line, vType, freeFromStarter = false, spawnX = null, s
     }
 
     sfx.playConnect(false, line.id);
-    updateAllUI();
+    if (!state.isFastSimSubStep) updateAllUI();
     return true;
 }
 
@@ -769,5 +843,5 @@ function clearLine(line) {
     line.isLoop = false;
     recalculateLineBridges(line);
     sfx.playDisconnect();
-    updateAllUI();
+    if (!state.isFastSimSubStep) updateAllUI();
 }
