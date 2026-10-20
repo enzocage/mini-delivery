@@ -374,30 +374,153 @@ function triggerVictoryModal() {
     }
 }
 
-function buildDifficultyModalGrid() {
-    // Popup-free design: difficulty cycles inline on click
+let selectedStartCityIndex = 0;
+
+function updateStartScreenLaunchButton() {
+    const btnLabel = document.getElementById('startScreenBtnLabel');
+    const city = CITIES[selectedStartCityIndex] || CITIES[0];
+    if (btnLabel && city) {
+        btnLabel.textContent = `${t('upg_select')}: ${city.name}`;
+    }
 }
 
-function cycleDifficulty(step = 1) {
+function renderStartScreenDifficulty() {
+    const container = document.getElementById('startDifficultyContainer');
+    const summaryEl = document.getElementById('startDiffSummary');
+    if (!container) return;
+    container.innerHTML = '';
+
     const tiers = ['joke', 'easy', 'hard', 'hardcore', 'chuck'];
     const icons = { joke: '🤡', easy: '🌱', hard: '⚡', hardcore: '🔥', chuck: '🤠' };
-    const idx = tiers.indexOf(state.difficulty);
-    const nextTier = tiers[(idx + step + tiers.length) % tiers.length];
-    state.difficulty = nextTier;
-    try { localStorage.setItem('miniDelivery_difficulty', nextTier); } catch (e) {}
-    const spec = DIFFICULTY_SPECS[nextTier];
-    initCity(state.cityIndex);
-    showFloatingText(state.cam.x, state.cam.y - 24, `${icons[nextTier]} ${t(`diff_${nextTier}_name`)} · ★ ${spec.starTargets.join('/')}`, spec.color);
+
+    const curSpec = DIFFICULTY_SPECS[state.difficulty] || DIFFICULTY_SPECS.hard;
+    if (summaryEl) {
+        summaryEl.textContent = `— ${t(`diff_${state.difficulty}_desc`)}`;
+    }
+
+    tiers.forEach((tierId) => {
+        const spec = DIFFICULTY_SPECS[tierId];
+        const isCurrent = state.difficulty === tierId;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `rounded-2xl p-2.5 text-left transition-all flex flex-col justify-between cursor-pointer ${
+            isCurrent
+                ? 'bg-white shadow-md ring-2 ring-amber-500 scale-[1.02]'
+                : 'bg-black/5 hover:bg-black/10 opacity-80 hover:opacity-100'
+        }`;
+        btn.innerHTML = `
+            <div class="flex items-center justify-between gap-1.5 mb-1">
+                <span class="font-extrabold text-xs flex items-center gap-1">
+                    <span>${icons[tierId]}</span>
+                    <span>${t(`diff_${tierId}_name`)}</span>
+                </span>
+                <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold text-white uppercase" style="background:${spec.color}">
+                    ${t(`diff_${tierId}_short`)}
+                </span>
+            </div>
+            <div class="flex items-center justify-between text-[10px] font-mono-num opacity-75">
+                <span>★ ${spec.starTargets.join('/')}</span>
+                <span class="text-rose-600 font-bold">≥${spec.maxOrdersSL} (${spec.maxOrdersXL} XL)</span>
+            </div>
+        `;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            state.difficulty = tierId;
+            try { localStorage.setItem('miniDelivery_difficulty', tierId); } catch (err) {}
+            renderStartScreenDifficulty();
+            updateGoalUI();
+        });
+        container.appendChild(btn);
+    });
 }
 
-document.getElementById('btnOpenDifficulty').addEventListener('click', (e) => {
-    e.stopPropagation();
-    cycleDifficulty(e.shiftKey ? -1 : 1);
-});
+function renderStartScreenCities(filterText = '') {
+    const container = document.getElementById('startCityGridContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    const q = filterText.trim().toLowerCase();
 
-document.getElementById('btnCloseDifficultyModal').addEventListener('click', () => {
-    document.getElementById('difficultyModal').classList.add('hidden');
-});
+    CITIES.forEach((city, idx) => {
+        if (q && !city.name.toLowerCase().includes(q) &&
+            !city.country.toLowerCase().includes(q) &&
+            !city.riverName.toLowerCase().includes(q)) {
+            return;
+        }
+
+        const rec = getCityRecord(city.id);
+        const starStr = rec.stars >= 3 ? '★★★' : (rec.stars === 2 ? '★★☆' : (rec.stars === 1 ? '★☆☆' : '☆☆☆'));
+        const isSelected = idx === selectedStartCityIndex;
+
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = `rounded-2xl p-2.5 text-left flex items-center gap-3 transition-all cursor-pointer ${
+            isSelected
+                ? 'bg-white shadow-md ring-2 ring-amber-500 scale-[1.01]'
+                : 'bg-black/5 hover:bg-black/10 opacity-90 hover:opacity-100'
+        }`;
+
+        const miniCanvas = document.createElement('canvas');
+        miniCanvas.width = 110;
+        miniCanvas.height = 72;
+        miniCanvas.className = 'w-[84px] h-[54px] rounded-xl flex-shrink-0 border border-black/10';
+        renderMiniMapPreview(miniCanvas, city);
+
+        const info = document.createElement('div');
+        info.className = 'min-w-0 flex-1';
+        info.innerHTML = `
+            <div class="flex items-center justify-between gap-1">
+                <span class="font-extrabold text-xs sm:text-sm truncate">${city.name}</span>
+                <span class="text-[10px] font-mono-num text-amber-500 font-extrabold">${starStr}</span>
+            </div>
+            <div class="text-[10px] opacity-65 truncate mt-0.5">${city.riverName}</div>
+            <div class="text-[10px] font-mono-num opacity-50 mt-0.5">${rec.bestScore > 0 ? `Best: ${rec.bestScore} · ${city.country}` : city.country}</div>
+        `;
+
+        card.appendChild(miniCanvas);
+        card.appendChild(info);
+
+        card.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectedStartCityIndex = idx;
+            updateStartScreenLaunchButton();
+            renderStartScreenCities(filterText);
+        });
+        card.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            selectedStartCityIndex = idx;
+            launchGameFromStartScreen();
+        });
+        container.appendChild(card);
+    });
+
+    updateStartScreenLaunchButton();
+}
+
+function openStartScreen() {
+    const introEl = document.getElementById('introSplash');
+    if (!introEl) return;
+    setGameSpeed(0);
+    selectedStartCityIndex = state.cityIndex || 0;
+    const searchInput = document.getElementById('startCitySearchInput');
+    if (searchInput) searchInput.value = '';
+    renderStartScreenDifficulty();
+    renderStartScreenCities('');
+    introEl.style.display = 'flex';
+    introEl.classList.remove('hidden', 'intro-hide');
+}
+
+function launchGameFromStartScreen() {
+    const introEl = document.getElementById('introSplash');
+    initCity(selectedStartCityIndex);
+    if (introEl) {
+        introEl.classList.add('intro-hide');
+        setTimeout(() => {
+            introEl.classList.add('hidden');
+            introEl.style.display = 'none';
+        }, 420);
+    }
+    setGameSpeed(1);
+}
 
 document.getElementById('btnVictoryNextCity').addEventListener('click', () => {
     document.getElementById('victoryModal').classList.add('hidden');
@@ -525,6 +648,9 @@ function setLanguage(langCode) {
     setActiveTool(state.activeTool);
     updateClockUI();
     updateAllUI();
+    renderStartScreenDifficulty();
+    const searchInput = document.getElementById('startCitySearchInput');
+    renderStartScreenCities(searchInput ? searchInput.value : '');
 }
 
 function cycleLanguage() {
@@ -686,41 +812,27 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-function cycleCity(step = 1) {
-    const nextIdx = (state.cityIndex + step + CITIES.length) % CITIES.length;
-    initCity(nextIdx);
-    const city = currentCity();
-    showFloatingText(state.cam.x, state.cam.y - 24, `🌍 ${nextIdx + 1}/${CITIES.length} · ${city.name} (${city.country})`, '#F59E0B');
+const btnOpenStartScreen = document.getElementById('btnOpenStartScreen');
+if (btnOpenStartScreen) {
+    btnOpenStartScreen.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openStartScreen();
+    });
 }
 
-const btnPrevCity = document.getElementById('btnPrevCity');
-const btnNextCity = document.getElementById('btnNextCity');
-const btnCycleCityMain = document.getElementById('btnCycleCityMain');
-const cityPillWrap = document.getElementById('btnOpenCityModal');
+const btnStartGameMain = document.getElementById('btnStartGameMain');
+if (btnStartGameMain) {
+    btnStartGameMain.addEventListener('click', (e) => {
+        e.stopPropagation();
+        launchGameFromStartScreen();
+    });
+}
 
-if (btnPrevCity) {
-    btnPrevCity.addEventListener('click', (e) => {
-        e.stopPropagation();
-        cycleCity(-1);
+const startCitySearchInput = document.getElementById('startCitySearchInput');
+if (startCitySearchInput) {
+    startCitySearchInput.addEventListener('input', (e) => {
+        renderStartScreenCities(e.target.value);
     });
-}
-if (btnNextCity) {
-    btnNextCity.addEventListener('click', (e) => {
-        e.stopPropagation();
-        cycleCity(1);
-    });
-}
-if (btnCycleCityMain) {
-    btnCycleCityMain.addEventListener('click', (e) => {
-        e.stopPropagation();
-        cycleCity(e.shiftKey ? -1 : 1);
-    });
-}
-if (cityPillWrap) {
-    cityPillWrap.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        cycleCity(e.deltaY > 0 ? 1 : -1);
-    }, { passive: false });
 }
 
 document.getElementById('btnCloseCityModal').addEventListener('click', () => {
@@ -890,22 +1002,10 @@ window.onload = function () {
             triggerWeeklyUpgradeModal();
         }
     } else if (introEl) {
+        selectedStartCityIndex = state.cityIndex || 0;
+        renderStartScreenDifficulty();
+        renderStartScreenCities('');
         setGameSpeed(0);
-        let introDismissed = false;
-        const dismissIntro = () => {
-            if (introDismissed) return;
-            introDismissed = true;
-            introEl.classList.add('intro-hide');
-            setGameSpeed(1);
-            setTimeout(() => {
-                introEl.classList.add('hidden');
-                introEl.style.display = 'none';
-            }, 600);
-        };
-        introEl.addEventListener('click', dismissIntro);
-        if (scene !== 'intro') {
-            setTimeout(dismissIntro, 3000);
-        }
     }
 
     requestAnimationFrame(gameLoop);
