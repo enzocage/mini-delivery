@@ -100,6 +100,10 @@ function updateDrones(dt) {
         d.rotorPhase += dt * 30;
         d.scale = damp(d.scale, 1.0, 12, dt);
 
+        if (state.drag.active && state.drag.mode === 'move_vehicle' && state.drag.movingVehicle === d) {
+            continue;
+        }
+
         const home = state.nodes.find(n => n.id === d.homeNodeId);
         if (!home) continue;
 
@@ -334,6 +338,10 @@ function updateLineVehicles(dt) {
 
             for (const c of v.cargo) {
                 c.scale = damp(c.scale || 1, 1.0, 14, dt);
+            }
+
+            if (state.drag.active && state.drag.mode === 'move_vehicle' && state.drag.movingVehicle === v) {
+                continue;
             }
 
             if (v.dwellTimer > 0) {

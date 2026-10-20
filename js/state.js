@@ -558,45 +558,60 @@ function addVehicleToLine(line, vType, freeFromStarter = false, spawnX = null, s
     if (!freeFromStarter) state.inventory[vType]--;
 
     let segIdx = 0;
+    let startProg = 0;
     let startNode = state.nodes.find(n => n.id === line.nodeIds[0]);
+    let startX = startNode ? startNode.x : 500;
+    let startY = startNode ? startNode.y : 325;
+    let startAngle = 0;
     const segCount = getLineSegmentCount(line);
+    const startDir = (line.isLoop && line.vehicles.length % 2 === 1) ? -1 : 1;
+
     if (spawnX !== null && spawnY !== null) {
-        let bestD = Infinity;
-        for (let i = 0; i < segCount; i++) {
-            const [id1, id2] = getLineSegmentNodeIds(line, i);
-            const n1 = state.nodes.find(n => n.id === id1);
-            const n2 = state.nodes.find(n => n.id === id2);
-            if (!n1 || !n2) continue;
-            const d = distToSegment(spawnX, spawnY, n1.x, n1.y, n2.x, n2.y);
-            if (d < bestD) {
-                bestD = d;
-                segIdx = i;
-                startNode = n1;
-            }
+        const proj = projectWorldPointToLine(line, spawnX, spawnY);
+        if (proj) {
+            segIdx = proj.segIndex;
+            startProg = startDir === 1 ? proj.progress : (1 - proj.progress);
+            startX = proj.x;
+            startY = proj.y;
+            startAngle = startDir === 1 ? proj.forwardAngle : (proj.forwardAngle + Math.PI);
+        }
+    } else if (startDir === -1 && segCount > 0) {
+        const [, id2] = getLineSegmentNodeIds(line, segIdx);
+        const n2 = state.nodes.find(n => n.id === id2);
+        if (n2) {
+            startX = n2.x;
+            startY = n2.y;
         }
     }
 
-    const startDir = (line.isLoop && line.vehicles.length % 2 === 1) ? -1 : 1;
-    if (startDir === -1 && segCount > 0) {
-        const [, id2] = getLineSegmentNodeIds(line, segIdx);
-        startNode = state.nodes.find(n => n.id === id2) || startNode;
-    }
-
-    line.vehicles.push({
+    const [idA, idB] = getLineSegmentNodeIds(line, segIdx);
+    const newVeh = {
         id: getUID(),
         type: vType,
         lineId: line.id,
         segIndex: segIdx,
-        progress: 0,
+        segNodeA: idA,
+        segNodeB: idB,
+        progress: startProg,
         dir: startDir,
-        x: startNode ? startNode.x : 500,
-        y: startNode ? startNode.y : 325,
-        angle: 0,
+        x: startX,
+        y: startY,
+        angle: startAngle,
         scale: 0.1,
-        bounceScale: 1.0,
+        bounceScale: 1.25,
         cargo: [],
         dwellTimer: 0.08
-    });
+    };
+    line.vehicles.push(newVeh);
+
+    // If dropped directly onto a station on this line, immediately load/unload at that station
+    if (spawnX !== null && spawnY !== null && typeof handleVehicleStopAtNode === 'function') {
+        const nearNode = state.nodes.find(n => line.nodeIds.includes(n.id) && dist( startX, startY, n.x, n.y ) <= n.radius + 12);
+        if (nearNode) {
+            handleVehicleStopAtNode(newVeh, line, nearNode);
+        }
+    }
+
     sfx.playConnect(false, line.id);
     updateAllUI();
     return true;

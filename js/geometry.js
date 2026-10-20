@@ -174,6 +174,79 @@ function getLineSegmentNodeIds(line, segIndex) {
     return [line.nodeIds[segIndex % n], line.nodeIds[(segIndex + 1) % n]];
 }
 
+// Project a world coordinate (wx, wy) onto the exact rendered road centerline of a line
+function projectWorldPointToLine(line, wx, wy) {
+    if (!line || line.nodeIds.length < 2) return null;
+    const segCount = getLineSegmentCount(line);
+    let best = null;
+    let bestDist = Infinity;
+
+    for (let i = 0; i < segCount; i++) {
+        const [id1, id2] = getLineSegmentNodeIds(line, i);
+        const n1 = state.nodes.find(n => n.id === id1);
+        const n2 = state.nodes.find(n => n.id === id2);
+        if (!n1 || !n2) continue;
+
+        const laneOffset = getSegmentParallelOffset(line.id, n1.id, n2.id);
+        const rawPts = computeMetroWaypoints(n1.x, n1.y, n2.x, n2.y, laneOffset);
+        const pts = expandSmoothWaypoints(rawPts, 22);
+
+        let totalLen = 0;
+        const segLens = [];
+        for (let k = 0; k < pts.length - 1; k++) {
+            const l = dist(pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1]);
+            segLens.push(l);
+            totalLen += l;
+        }
+        totalLen = Math.max(1, totalLen);
+
+        let accum = 0;
+        for (let k = 0; k < pts.length - 1; k++) {
+            const ax = pts[k][0], ay = pts[k][1];
+            const bx = pts[k + 1][0], by = pts[k + 1][1];
+            const l2 = (bx - ax) ** 2 + (by - ay) ** 2;
+            let t = l2 > 0 ? ((wx - ax) * (bx - ax) + (wy - ay) * (by - ay)) / l2 : 0;
+            t = Math.max(0, Math.min(1, t));
+            const px = ax + t * (bx - ax);
+            const py = ay + t * (by - ay);
+            const d = dist(wx, wy, px, py);
+            if (d < bestDist) {
+                bestDist = d;
+                const prog = Math.max(0, Math.min(0.98, (accum + t * segLens[k]) / totalLen));
+                const forwardAngle = Math.atan2(by - ay, bx - ax);
+                best = {
+                    line,
+                    segIndex: i,
+                    progress: prog,
+                    x: px,
+                    y: py,
+                    forwardAngle,
+                    segNodeA: id1,
+                    segNodeB: id2,
+                    dist: d
+                };
+            }
+            accum += segLens[k];
+        }
+    }
+    return best;
+}
+
+function findClosestPointOnAnyLine(wx, wy, maxDist = 48) {
+    let best = null;
+    let bestD = maxDist;
+    for (let i = 0; i < state.unlockedLines; i++) {
+        const line = state.lines[i];
+        if (!line || line.nodeIds.length < 2) continue;
+        const proj = projectWorldPointToLine(line, wx, wy);
+        if (proj && proj.dist <= bestD) {
+            bestD = proj.dist;
+            best = proj;
+        }
+    }
+    return best;
+}
+
 // Compute parallel lane offset when multiple lines share the same pair of stations
 function getSegmentParallelOffset(lineId, nodeAId, nodeBId) {
     const minId = Math.min(nodeAId, nodeBId);

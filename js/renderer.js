@@ -476,14 +476,129 @@ function renderGame() {
             ctx.arc(valid ? targetDepot.x : wx, valid ? targetDepot.y : wy, 14, 0, Math.PI * 2);
             ctx.stroke();
         } else if (tType === 'bike' || tType === 'car') {
-            const targetLine = findLineAtWorld(wx, wy, hitPad);
-            ctx.fillStyle = targetLine ? targetLine.color : '#64748B';
-            ctx.globalAlpha = 0.9;
+            const snap = findClosestPointOnAnyLine(wx, wy, 52 * (state.drag.isTouch ? 1.5 : 1.0));
+            if (snap) {
+                ctx.beginPath();
+                ctx.moveTo(wx, wy);
+                ctx.lineTo(snap.x, snap.y);
+                ctx.strokeStyle = snap.line.color;
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.beginPath();
+                ctx.arc(snap.x, snap.y, 13, 0, Math.PI * 2);
+                ctx.strokeStyle = snap.line.color;
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+            }
+            ctx.save();
+            ctx.translate(snap ? snap.x : wx, snap ? snap.y : wy);
+            if (snap) ctx.rotate(snap.forwardAngle);
+            ctx.fillStyle = snap ? snap.line.color : '#64748B';
+            ctx.globalAlpha = 0.92;
+            const wCap = tType === 'car' ? 28 : 20;
+            const hCap = tType === 'car' ? 15 : 11;
             ctx.beginPath();
-            ctx.roundRect(wx - 14, wy - 7.5, 28, 15, 5);
+            ctx.roundRect(-wCap / 2, -hCap / 2, wCap, hCap, 5);
             ctx.fill();
             ctx.strokeStyle = '#FFFFFF';
             ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+        }
+        ctx.restore();
+    }
+
+    // 9B. Ghost Preview when repositioning or transferring an active vehicle / drone on the map
+    if (state.drag.active && state.drag.mode === 'move_vehicle' && state.drag.movingVehicle) {
+        const mv = state.drag.movingVehicle;
+        const wx = state.drag.currWorldX;
+        const wy = state.drag.currWorldY;
+        const hitPad = state.drag.isTouch ? 42 : 26;
+        ctx.save();
+
+        if (state.drag.movingVehicleKind === 'ground') {
+            const snap = findClosestPointOnAnyLine(wx, wy, 56 * (state.drag.isTouch ? 1.45 : 1.0));
+            const col = snap ? snap.line.color : (state.drag.sourceLine ? state.drag.sourceLine.color : '#64748B');
+
+            // Dashed line from original vehicle position to new target
+            ctx.beginPath();
+            ctx.moveTo(mv.x, mv.y);
+            ctx.lineTo(snap ? snap.x : wx, snap ? snap.y : wy);
+            ctx.strokeStyle = col;
+            ctx.globalAlpha = 0.55;
+            ctx.lineWidth = 2.2;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1.0;
+
+            if (snap) {
+                ctx.beginPath();
+                ctx.arc(snap.x, snap.y, 15, 0, Math.PI * 2);
+                ctx.strokeStyle = snap.line.color;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+
+            ctx.translate(snap ? snap.x : wx, snap ? snap.y : wy);
+            if (snap) {
+                const dragDx = wx - mv.x;
+                const dragDy = wy - mv.y;
+                const dot = dragDx * Math.cos(snap.forwardAngle) + dragDy * Math.sin(snap.forwardAngle);
+                const dirAngle = (Math.hypot(dragDx, dragDy) > 12 && dot < 0)
+                    ? snap.forwardAngle + Math.PI
+                    : snap.forwardAngle;
+                ctx.rotate(dirAngle);
+            }
+            ctx.fillStyle = col;
+            const wCap = mv.type === 'car' ? 30 : 21;
+            const hCap = mv.type === 'car' ? 16 : 11.5;
+            ctx.beginPath();
+            ctx.roundRect(-wCap / 2, -hCap / 2, wCap, hCap, 5);
+            ctx.fill();
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2.2;
+            ctx.stroke();
+        } else if (state.drag.movingVehicleKind === 'drone') {
+            let targetDepot = findNodeAtWorld(wx, wy, hitPad);
+            if (!targetDepot || targetDepot.kind !== 'DEPOT') {
+                targetDepot = null;
+                let bestD = 52 * (state.drag.isTouch ? 1.4 : 1.0);
+                for (const n of state.nodes) {
+                    if (n.kind === 'DEPOT') {
+                        const d = dist(wx, wy, n.x, n.y);
+                        if (d < bestD) {
+                            bestD = d;
+                            targetDepot = n;
+                        }
+                    }
+                }
+            }
+            ctx.beginPath();
+            ctx.moveTo(mv.x, mv.y);
+            ctx.lineTo(targetDepot ? targetDepot.x : wx, targetDepot ? targetDepot.y : wy);
+            ctx.strokeStyle = '#06B6D4';
+            ctx.globalAlpha = 0.55;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1.0;
+
+            if (targetDepot) {
+                ctx.beginPath();
+                ctx.arc(targetDepot.x, targetDepot.y, targetDepot.radius + 10, 0, Math.PI * 2);
+                ctx.strokeStyle = '#06B6D4';
+                ctx.lineWidth = 3.5;
+                ctx.stroke();
+            }
+            ctx.strokeStyle = targetDepot ? '#06B6D4' : '#94A3B8';
+            ctx.lineWidth = 2.6;
+            ctx.beginPath();
+            ctx.arc(targetDepot ? targetDepot.x : wx, targetDepot ? targetDepot.y : wy, 14, 0, Math.PI * 2);
             ctx.stroke();
         }
         ctx.restore();
@@ -663,10 +778,13 @@ function renderGame() {
     // 12. Render Ground Vehicles: Cyberbikes & Cybercars
     for (const line of state.lines) {
         for (const v of line.vehicles) {
+            const isHoveredVeh = state.hover.vehicle === v;
+            const isBeingDragged = state.drag.active && state.drag.mode === 'move_vehicle' && state.drag.movingVehicle === v;
             ctx.save();
+            if (isBeingDragged) ctx.globalAlpha = 0.42;
             ctx.translate(v.x, v.y);
             ctx.rotate(v.angle);
-            const s = (v.scale || 1) * (v.bounceScale || 1);
+            const s = (v.scale || 1) * (v.bounceScale || 1) * (isHoveredVeh ? 1.16 : 1.0);
             ctx.scale(s, s);
 
             if (v.type === 'bike') {
@@ -679,6 +797,11 @@ function renderGame() {
                 ctx.beginPath();
                 ctx.roundRect(-9.5, -5, 19, 10, 5);
                 ctx.fill();
+                if (isHoveredVeh) {
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 1.6;
+                    ctx.stroke();
+                }
 
                 ctx.fillStyle = state.nightMode ? '#0F172A' : '#FFFFFF';
                 ctx.beginPath();
@@ -698,6 +821,11 @@ function renderGame() {
                 ctx.beginPath();
                 ctx.roundRect(-14, -7.5, 28, 15, 4.5);
                 ctx.fill();
+                if (isHoveredVeh) {
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 1.8;
+                    ctx.stroke();
+                }
 
                 ctx.fillStyle = state.nightMode ? '#0F172A' : '#FFFFFF';
                 ctx.beginPath();

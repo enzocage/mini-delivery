@@ -187,6 +187,36 @@ function findLineAtWorld(wx, wy, maxDist = 15, isTouch = state.drag.isTouch) {
     return hit ? hit.line : null;
 }
 
+function findVehicleAtWorld(wx, wy, isTouch = state.drag.isTouch) {
+    const boost = getTouchBoost(isTouch);
+    let bestHit = null;
+    let bestDist = Infinity;
+
+    for (let i = 0; i < state.unlockedLines; i++) {
+        const line = state.lines[i];
+        if (!line) continue;
+        for (const v of line.vehicles) {
+            const maxR = (v.type === 'car' ? 16.5 : 14.0) * boost;
+            const d = dist(wx, wy, v.x, v.y);
+            if (d <= maxR && d < bestDist) {
+                bestDist = d;
+                bestHit = { kind: 'ground', vehicle: v, line, dist: d };
+            }
+        }
+    }
+
+    for (const dr of state.drones) {
+        const maxR = 14.0 * boost;
+        const d = dist(wx, wy, dr.x, dr.y);
+        if (d <= maxR && d < bestDist) {
+            bestDist = d;
+            bestHit = { kind: 'drone', vehicle: dr, line: null, dist: d };
+        }
+    }
+
+    return bestHit;
+}
+
 function reopenLoopIntoDrag(line, segIndex, detachedSide, wx, wy) {
     if (!line || !line.isLoop || line.nodeIds.length < 3) return false;
     const [id1, id2] = getLineSegmentNodeIds(line, segIndex);
@@ -484,11 +514,14 @@ function applyTokenAtWorld(tokenType, wx, wy, isTouch = state.drag.isTouch) {
     }
 
     if (tokenType === 'bike' || tokenType === 'car') {
-        const targetLine = clickedLine || state.lines[state.selectedLineId];
+        const snap = findClosestPointOnAnyLine(wx, wy, 56 * (isTouch ? 1.5 : 1.0));
+        const targetLine = snap ? snap.line : (clickedLine || state.lines[state.selectedLineId]);
         if (targetLine && targetLine.nodeIds.length >= 2) {
             if (addVehicleToLine(targetLine, tokenType, false, wx, wy)) {
+                state.selectedLineId = targetLine.id;
                 triggerHaptic(14);
                 setActiveTool('route');
+                updateAllUI();
                 return true;
             }
         } else {
@@ -506,8 +539,8 @@ function getPointerWorldCoords(clientX, clientY, isTouch, mode) {
     const sy = clientY - rect.top;
     const rawW = screenToWorld(sx, sy);
 
-    // Invisible Finger-Occlusion Lift: when dragging a dock token on touch, lift target above the thumb
-    const liftScreenPx = (isTouch && mode === 'dock_token') ? -36 : 0;
+    // Invisible Finger-Occlusion Lift: when dragging a dock token or repositioning a vehicle on touch, lift target above the thumb
+    const liftScreenPx = (isTouch && (mode === 'dock_token' || mode === 'move_vehicle')) ? -36 : 0;
     const liftedW = liftScreenPx !== 0 ? screenToWorld(sx, sy + liftScreenPx) : rawW;
 
     return {
@@ -613,6 +646,28 @@ canvas.addEventListener('pointerdown', (e) => {
     }
 
     const clickedNode = findNodeAtWorld(w.x, w.y, 10, isTouch);
+    const vehHit = findVehicleAtWorld(w.x, w.y, isTouch);
+
+    // 2.5 PRIORITY 2.5: Grabbing an Active Vehicle (Cyberbike / Cybercar) or Cargo Drone to reposition or move to another route!
+    if (vehHit && (!clickedNode || vehHit.dist < dist(w.x, w.y, clickedNode.x, clickedNode.y) - 2)) {
+        document.getElementById('nodeInspector').classList.add('hidden');
+        if (vehHit.line) {
+            state.selectedLineId = vehHit.line.id;
+        }
+        state.drag.active = true;
+        state.drag.mode = 'move_vehicle';
+        state.drag.movingVehicle = vehHit.vehicle;
+        state.drag.movingVehicleKind = vehHit.kind;
+        state.drag.sourceLine = vehHit.line || null;
+        state.drag.startWorldX = w.x;
+        state.drag.startWorldY = w.y;
+        triggerHaptic(12);
+        sfx.playPickupPip();
+        canvas.classList.add('dragging-active');
+        updateAllUI();
+        return;
+    }
+
     const segHit = findLineSegmentDetailAtWorld(w.x, w.y, 15, isTouch);
 
     // 3. PRIORITY 3: Grabbing a Line Segment
@@ -817,13 +872,15 @@ window.addEventListener('pointermove', (e) => {
     if (!state.drag.active) {
         const conn = findLineConnectorAtWorld(w.x, w.y, false);
         const term = !conn ? findLineTerminalAtWorld(w.x, w.y, false) : null;
+        const veh = (!conn && !term) ? findVehicleAtWorld(w.x, w.y, false) : null;
         const hn = findNodeAtWorld(w.x, w.y, 8, false);
-        const hl = (!hn && !term && !conn) ? findLineAtWorld(w.x, w.y, 12, false) : null;
+        const hl = (!hn && !term && !conn && !veh) ? findLineAtWorld(w.x, w.y, 12, false) : null;
 
         state.hover.connector = conn;
+        state.hover.vehicle = veh ? veh.vehicle : null;
         state.hover.nodeId = hn ? hn.id : null;
-        state.hover.lineId = conn ? conn.line.id : (term ? term.line.id : (hl ? hl.id : null));
-        canvas.classList.toggle('hover-interactive', Boolean(conn || term || hn || hl));
+        state.hover.lineId = conn ? conn.line.id : (term ? term.line.id : (veh && veh.line ? veh.line.id : (hl ? hl.id : null)));
+        canvas.classList.toggle('hover-interactive', Boolean(conn || term || veh || hn || hl));
         return;
     }
 
@@ -835,7 +892,7 @@ window.addEventListener('pointermove', (e) => {
     state.drag.screenY = sy;
 
     // Gentle Edge Auto-Pan when dragging near mobile screen borders
-    if (isTouch && (state.drag.mode === 'draw_line' || state.drag.mode === 'reroute_end' || state.drag.mode === 'reroute_mid' || state.drag.mode === 'dock_token')) {
+    if (isTouch && (state.drag.mode === 'draw_line' || state.drag.mode === 'reroute_end' || state.drag.mode === 'reroute_mid' || state.drag.mode === 'dock_token' || state.drag.mode === 'move_vehicle')) {
         const edgeMargin = 46;
         if (sx < edgeMargin) state.cam.userOffsetX = Math.max(-300, state.cam.userOffsetX - 3.2 / state.cam.zoom);
         if (sx > window.innerWidth - edgeMargin) state.cam.userOffsetX = Math.min(300, state.cam.userOffsetX + 3.2 / state.cam.zoom);
@@ -970,6 +1027,109 @@ function handlePointerEnd(e) {
             const coords = getPointerWorldCoords(e.clientX, e.clientY, isTouch, 'dock_token');
             applyTokenAtWorld(state.drag.tokenType, coords.x, coords.y, isTouch);
         }
+    } else if (state.drag.mode === 'move_vehicle' && state.drag.movingVehicle) {
+        const rect = canvas.getBoundingClientRect();
+        const sy = e.clientY - rect.top;
+        const coords = getPointerWorldCoords(e.clientX, e.clientY, isTouch, 'move_vehicle');
+        const mv = state.drag.movingVehicle;
+
+        if (state.drag.movingVehicleKind === 'ground') {
+            const srcLine = state.drag.sourceLine;
+            if (sy >= window.innerHeight - 92) {
+                // Dropped into bottom dock -> return vehicle to dock inventory!
+                if (srcLine) {
+                    const idx = srcLine.vehicles.indexOf(mv);
+                    if (idx !== -1) srcLine.vehicles.splice(idx, 1);
+                }
+                mv.cargo = [];
+                state.inventory[mv.type] = (state.inventory[mv.type] || 0) + 1;
+                syncMainDepotSupply();
+                triggerHaptic(14);
+                sfx.playDisconnect();
+                updateAllUI();
+            } else {
+                const snap = findClosestPointOnAnyLine(coords.x, coords.y, 58 * (isTouch ? 1.45 : 1.0));
+                if (snap) {
+                    const targetLine = snap.line;
+                    if (srcLine && srcLine.id !== targetLine.id) {
+                        const idx = srcLine.vehicles.indexOf(mv);
+                        if (idx !== -1) srcLine.vehicles.splice(idx, 1);
+                        mv.lineId = targetLine.id;
+                        targetLine.vehicles.push(mv);
+                        state.selectedLineId = targetLine.id;
+
+                        // Keep only cargo whose target station is served by the new line; return others to depot supply
+                        mv.cargo = mv.cargo.filter(p => targetLine.nodeIds.includes(p.targetCustomerId));
+                        syncMainDepotSupply();
+                    }
+
+                    const dragDx = coords.x - (state.drag.startWorldX || mv.x);
+                    const dragDy = coords.y - (state.drag.startWorldY || mv.y);
+                    const dot = dragDx * Math.cos(snap.forwardAngle) + dragDy * Math.sin(snap.forwardAngle);
+                    const newDir = (Math.hypot(dragDx, dragDy) > 12 && dot < 0) ? -1 : 1;
+
+                    mv.segIndex = snap.segIndex;
+                    mv.segNodeA = snap.segNodeA;
+                    mv.segNodeB = snap.segNodeB;
+                    mv.dir = newDir;
+                    mv.progress = newDir === 1 ? snap.progress : (1 - snap.progress);
+                    mv.x = snap.x;
+                    mv.y = snap.y;
+                    mv.angle = newDir === 1 ? snap.forwardAngle : (snap.forwardAngle + Math.PI);
+                    mv.bounceScale = 1.36;
+                    mv.dwellTimer = 0.06;
+
+                    const nearNode = state.nodes.find(n => targetLine.nodeIds.includes(n.id) && dist(snap.x, snap.y, n.x, n.y) <= n.radius + 14);
+                    if (nearNode && typeof handleVehicleStopAtNode === 'function') {
+                        handleVehicleStopAtNode(mv, targetLine, nearNode);
+                    }
+
+                    state.ripples.push({ x: snap.x, y: snap.y, r: 4, maxR: 38, color: targetLine.color, alpha: 0.85 });
+                    triggerHaptic(14);
+                    sfx.playConnect(false, targetLine.id);
+                    updateAllUI();
+                }
+            }
+        } else if (state.drag.movingVehicleKind === 'drone') {
+            if (sy >= window.innerHeight - 92) {
+                const idx = state.drones.indexOf(mv);
+                if (idx !== -1) state.drones.splice(idx, 1);
+                mv.cargo = null;
+                state.inventory.drone = (state.inventory.drone || 0) + 1;
+                syncMainDepotSupply();
+                triggerHaptic(14);
+                sfx.playDisconnect();
+                updateAllUI();
+            } else {
+                const hitPad = isTouch ? 42 : 26;
+                let targetDepot = findNodeAtWorld(coords.x, coords.y, hitPad, isTouch);
+                if (!targetDepot || targetDepot.kind !== 'DEPOT') {
+                    targetDepot = null;
+                    let bestD = 52 * (isTouch ? 1.4 : 1.0);
+                    for (const n of state.nodes) {
+                        if (n.kind === 'DEPOT') {
+                            const d = dist(coords.x, coords.y, n.x, n.y);
+                            if (d < bestD) {
+                                bestD = d;
+                                targetDepot = n;
+                            }
+                        }
+                    }
+                }
+                if (targetDepot) {
+                    mv.homeNodeId = targetDepot.id;
+                    mv.x = targetDepot.x + 12;
+                    mv.y = targetDepot.y - 12;
+                    if (!mv.cargo) mv.state = 'IDLE';
+                    targetDepot.scaleVel = 2.8;
+                    state.ripples.push({ x: targetDepot.x, y: targetDepot.y, r: targetDepot.radius, maxR: 44, color: '#06B6D4', alpha: 0.9 });
+                    triggerHaptic(14);
+                    sfx.playPlaceDepot('S');
+                    openNodeInspector(targetDepot);
+                    updateAllUI();
+                }
+            }
+        }
     } else if (state.drag.mode === 'reroute_end' && line) {
         const target = state.drag.snapNode;
         const anchor = state.drag.anchorNode;
@@ -1048,6 +1208,9 @@ function handlePointerEnd(e) {
     state.drag.active = false;
     state.drag.mode = null;
     state.drag.tokenType = null;
+    state.drag.movingVehicle = null;
+    state.drag.movingVehicleKind = null;
+    state.drag.sourceLine = null;
     state.drag.startNode = null;
     state.drag.anchorNode = null;
     state.drag.snapNode = null;
