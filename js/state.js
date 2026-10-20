@@ -1,6 +1,92 @@
 /***************************************************************************
  * 4. CORE GAME STATE, AUTO-ZOOM CAMERA & ENTITY MANAGEMENT
  ***************************************************************************/
+const DIFFICULTY_SPECS = {
+    joke: {
+        id: 'joke',
+        badge: 'JOKE',
+        color: '#10B981',
+        starTargets: [30, 60, 100],
+        maxOrdersSL: 7,
+        maxOrdersXL: 6,
+        overloadSpeedMult: 0.35,
+        deliveryRelief: 0.45,
+        depotCapMult: 3.0,
+        depotGridlockRatio: 0.98,
+        spawnRateMult: 0.72,
+        startLines: 4,
+        startInv: { depot_S: 2, depot_L: 1, depot_XL: 0, drone: 3, bike: 4, car: 1, bridges: 5 }
+    },
+    easy: {
+        id: 'easy',
+        badge: 'EASY',
+        color: '#0EA5E9',
+        starTargets: [75, 160, 260],
+        maxOrdersSL: 5,
+        maxOrdersXL: 4,
+        overloadSpeedMult: 0.68,
+        deliveryRelief: 0.24,
+        depotCapMult: 1.5,
+        depotGridlockRatio: 0.92,
+        spawnRateMult: 0.85,
+        startLines: 3,
+        startInv: { depot_S: 1, depot_L: 0, depot_XL: 0, drone: 1, bike: 3, car: 0, bridges: 3 }
+    },
+    hard: {
+        id: 'hard',
+        badge: 'HARD',
+        color: '#F59E0B',
+        starTargets: [100, 220, 350],
+        maxOrdersSL: 4,
+        maxOrdersXL: 3,
+        overloadSpeedMult: 1.0,
+        deliveryRelief: 0.14,
+        depotCapMult: 1.0,
+        depotGridlockRatio: 0.85,
+        spawnRateMult: 1.0,
+        startLines: 2,
+        startInv: { depot_S: 0, depot_L: 0, depot_XL: 0, drone: 1, bike: 2, car: 0, bridges: 1 }
+    },
+    hardcore: {
+        id: 'hardcore',
+        badge: 'HARDCORE',
+        color: '#F43F5E',
+        starTargets: [150, 320, 500],
+        maxOrdersSL: 3,
+        maxOrdersXL: 2,
+        overloadSpeedMult: 1.45,
+        deliveryRelief: 0.09,
+        depotCapMult: 0.78,
+        depotGridlockRatio: 0.80,
+        spawnRateMult: 1.28,
+        startLines: 2,
+        startInv: { depot_S: 0, depot_L: 0, depot_XL: 0, drone: 0, bike: 2, car: 0, bridges: 1 }
+    },
+    chuck: {
+        id: 'chuck',
+        badge: 'CHUCK NORRIS',
+        color: '#8B5CF6',
+        starTargets: [250, 500, 777],
+        maxOrdersSL: 2,
+        maxOrdersXL: 2,
+        overloadSpeedMult: 2.15,
+        deliveryRelief: 0.06,
+        depotCapMult: 0.62,
+        depotGridlockRatio: 0.74,
+        spawnRateMult: 1.62,
+        startLines: 2,
+        startInv: { depot_S: 0, depot_L: 0, depot_XL: 0, drone: 0, bike: 1, car: 0, bridges: 1 }
+    }
+};
+
+function getDifficultySpec() {
+    return DIFFICULTY_SPECS[state.difficulty] || DIFFICULTY_SPECS.hard;
+}
+
+function getStarTargets() {
+    return getDifficultySpec().starTargets;
+}
+
 const STAR_TARGETS = [100, 220, 350];
 
 function getCityRecord(cityId) {
@@ -30,6 +116,7 @@ function saveCityRecord(cityId, score, stars) {
 
 const state = {
     cityIndex: 0,
+    difficulty: 'hard',
     nightMode: false,
     endlessMode: false,
     victoryReached: false,
@@ -237,25 +324,18 @@ function initCity(cityIdx) {
     state.weekCount = 1;
     state.rushHourPulse = 0;
 
-    state.unlockedLines = 2;
+    const dSpec = getDifficultySpec();
+    state.unlockedLines = dSpec.startLines;
     state.everUnlocked = {
         bike: true,
         drone: true,
         bridges: true,
-        depot_S: false,
-        car: false,
-        depot_L: false,
-        depot_XL: false
+        depot_S: dSpec.startInv.depot_S > 0,
+        car: dSpec.startInv.car > 0,
+        depot_L: dSpec.startInv.depot_L > 0,
+        depot_XL: dSpec.startInv.depot_XL > 0
     };
-    state.inventory = {
-        depot_S: 0,
-        depot_L: 0,
-        depot_XL: 0,
-        drone: 1,
-        bike: 2,
-        car: 0,
-        bridges: 1
-    };
+    state.inventory = { ...dSpec.startInv };
 
     state.activeTool = 'route';
     state.selectedLineId = 0;
@@ -312,6 +392,8 @@ function initCity(cityIdx) {
 
 function createDepotNode(depotType, x, y) {
     const spec = DEPOT_SPECS[depotType];
+    const dSpec = getDifficultySpec();
+    const scaledCap = Math.max(4, Math.round(spec.cap * dSpec.depotCapMult));
     const node = {
         id: getUID(),
         kind: 'DEPOT',
@@ -319,7 +401,7 @@ function createDepotNode(depotType, x, y) {
         label: getDepotLabel(depotType),
         x, y,
         radius: spec.radius,
-        capacity: spec.cap,
+        capacity: scaledCap,
         allowedSizes: spec.allowed,
         droneRange: spec.droneRange,
         storage: [],
@@ -333,6 +415,7 @@ function createDepotNode(depotType, x, y) {
 }
 
 function createCustomerNode(demandType, x, y) {
+    const dSpec = getDifficultySpec();
     const node = {
         id: getUID(),
         kind: 'CUSTOMER',
@@ -340,7 +423,7 @@ function createCustomerNode(demandType, x, y) {
         x, y,
         radius: demandType === 'XL' ? 16.5 : (demandType === 'L' ? 14.5 : 13),
         waitingOrders: [],
-        maxOrders: demandType === 'XL' ? 3 : 4,
+        maxOrders: demandType === 'XL' ? dSpec.maxOrdersXL : dSpec.maxOrdersSL,
         overloadTimer: 0,
         scale: 0.05,
         scaleVel: 0,

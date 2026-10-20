@@ -941,6 +941,8 @@ window.addEventListener('keydown', (e) => {
         document.getElementById('cityModal').classList.add('hidden');
         document.getElementById('helpModal').classList.add('hidden');
         document.getElementById('nodeInspector').classList.add('hidden');
+        const diffMod = document.getElementById('difficultyModal');
+        if (diffMod) diffMod.classList.add('hidden');
     }
 });
 

@@ -45,7 +45,9 @@ function completeDelivery(customerNode, pkg, fromX = null, fromY = null) {
             }
         }
     }
-    customerNode.overloadTimer = Math.max(0, customerNode.overloadTimer - 0.14);
+    const dSpec = getDifficultySpec();
+    const targets = getStarTargets();
+    customerNode.overloadTimer = Math.max(0, customerNode.overloadTimer - dSpec.deliveryRelief);
     customerNode.scaleVel = 2.4;
 
     if (fromX !== null && fromY !== null) {
@@ -55,21 +57,21 @@ function completeDelivery(customerNode, pkg, fromX = null, fromY = null) {
     state.score++;
     state.scoreBySize[pkg.size] = (state.scoreBySize[pkg.size] || 0) + 1;
 
-    // Check 3-Act City Mastery Milestones (100 ★ / 220 ★★ / 350 ★★★)
+    // Check 3-Act City Mastery Milestones (★ / ★★ / ★★★ scaled by Difficulty)
     const city = currentCity();
-    if (state.score >= STAR_TARGETS[0] && state.starsEarned < 1) {
+    if (state.score >= targets[0] && state.starsEarned < 1) {
         state.starsEarned = 1;
         saveCityRecord(city.id, state.score, 1);
         sfx.playWeeklyChord();
-        showFloatingText(customerNode.x, customerNode.y - 26, t('msg_star_1'), '#F59E0B');
+        showFloatingText(customerNode.x, customerNode.y - 26, `★☆☆ (${targets[0]})!`, '#F59E0B');
     }
-    if (state.score >= STAR_TARGETS[1] && state.starsEarned < 2) {
+    if (state.score >= targets[1] && state.starsEarned < 2) {
         state.starsEarned = 2;
         saveCityRecord(city.id, state.score, 2);
         sfx.playWeeklyChord();
-        showFloatingText(customerNode.x, customerNode.y - 26, t('msg_star_2'), '#F59E0B');
+        showFloatingText(customerNode.x, customerNode.y - 26, `★★☆ (${targets[1]})!`, '#F59E0B');
     }
-    if (state.score >= STAR_TARGETS[2] && state.starsEarned < 3) {
+    if (state.score >= targets[2] && state.starsEarned < 3) {
         state.starsEarned = 3;
         saveCityRecord(city.id, state.score, 3);
         if (!state.victoryReached && !state.endlessMode) {
@@ -477,9 +479,10 @@ function updateSimulation(rawDt) {
     }
     updateClockUI();
 
-    state.spawnTimer += dt;
+    const dSpec = getDifficultySpec();
+    state.spawnTimer += dt * dSpec.spawnRateMult;
     const spawnInterval = Math.max(4.8, 12.8 - state.weekCount * 1.55);
-    const maxCustomers = Math.min(42, 6 + state.weekCount * 6);
+    const maxCustomers = Math.min(44, 6 + state.weekCount * 6);
     const currentCustomers = state.nodes.filter(n => n.kind === 'CUSTOMER').length;
 
     if (state.spawnTimer >= spawnInterval && currentCustomers < maxCustomers) {
@@ -489,7 +492,9 @@ function updateSimulation(rawDt) {
 
         let demandType = 'S';
         const r = Math.random();
-        if (state.dayCount >= 3 && state.weekCount === 1) {
+        if (state.difficulty === 'chuck' && state.dayCount >= 3) {
+            demandType = r < 0.35 ? 'S' : (r < 0.68 ? 'L' : 'XL');
+        } else if (state.dayCount >= 3 && state.weekCount === 1) {
             demandType = r < 0.56 ? 'S' : 'L';
         } else if (state.weekCount === 2) {
             demandType = r < 0.44 ? 'S' : (r < 0.78 ? 'L' : 'XL');
@@ -514,10 +519,10 @@ function updateSimulation(rawDt) {
         updateAllUI();
     }
 
-    state.packageTimer += dt;
+    state.packageTimer += dt * dSpec.spawnRateMult;
     const isRushHour = state.timeOfDay >= 16 && state.timeOfDay <= 20;
     const rushMultiplier = isRushHour ? (1.35 + state.weekCount * 0.18) : 1.0;
-    const baseOrderInterval = Math.max(0.55, (3.45 - currentCustomers * 0.095 - state.weekCount * 0.24) / rushMultiplier);
+    const baseOrderInterval = Math.max(0.48, (3.45 - currentCustomers * 0.095 - state.weekCount * 0.24) / rushMultiplier);
 
     if (state.packageTimer >= baseOrderInterval) {
         state.packageTimer = 0;
@@ -526,7 +531,7 @@ function updateSimulation(rawDt) {
             const c = customers[Math.floor(Math.random() * customers.length)];
             spawnOrderForCustomer(c);
             const extraBurstChance = (isRushHour ? 0.35 : 0.14) + Math.max(0, state.weekCount - 2) * 0.10;
-            if (state.weekCount >= 2 && Math.random() < extraBurstChance) {
+            if ((state.weekCount >= 2 || state.difficulty === 'chuck') && Math.random() < extraBurstChance) {
                 const c2 = customers[Math.floor(Math.random() * customers.length)];
                 spawnOrderForCustomer(c2);
             }
@@ -537,17 +542,16 @@ function updateSimulation(rawDt) {
     updateDrones(dt);
     updateLineVehicles(dt);
 
-    // DUAL LOSE CONDITIONS:
-    // 1) Customer Station Escalation (>= 4 waiting orders for S/L, >= 3 for XL)
-    // 2) Depot / Hub Gridlock (>= 85% storage capacity full)
+    // DUAL LOSE CONDITIONS (Scaled by Difficulty: Joke / Easy / Hard / Hardcore / Chuck Norris):
     let maxUrgency = 0;
     for (const n of state.nodes) {
         if (n.kind === 'CUSTOMER') {
-            const threshold = n.maxOrders || 4;
+            const threshold = n.demandType === 'XL' ? dSpec.maxOrdersXL : dSpec.maxOrdersSL;
+            n.maxOrders = threshold;
             if (n.waitingOrders.length >= threshold) {
                 const excess = (n.waitingOrders.length - threshold) + 1;
                 const weekScale = 1 + (state.weekCount - 1) * 0.10;
-                const rate = (0.036 + excess * excess * 0.0085) * weekScale;
+                const rate = (0.036 + excess * excess * 0.0085) * weekScale * dSpec.overloadSpeedMult;
                 n.overloadTimer += dt * rate;
                 if (n.overloadTimer > maxUrgency) maxUrgency = n.overloadTimer;
 
@@ -565,10 +569,10 @@ function updateSimulation(rawDt) {
                 n.overloadTimer = Math.max(0, n.overloadTimer - dt * 0.065);
             }
         } else if (n.kind === 'DEPOT') {
-            const critCount = Math.ceil(n.capacity * 0.85);
+            const critCount = Math.ceil(n.capacity * dSpec.depotGridlockRatio);
             if (n.storage.length >= critCount) {
                 const fillRatio = n.storage.length / Math.max(1, n.capacity);
-                const rate = 0.034 + Math.max(0, fillRatio - 0.85) * 0.22;
+                const rate = (0.034 + Math.max(0, fillRatio - dSpec.depotGridlockRatio) * 0.22) * dSpec.overloadSpeedMult;
                 n.overloadTimer = (n.overloadTimer || 0) + dt * rate;
                 if (n.overloadTimer > maxUrgency) maxUrgency = n.overloadTimer;
 

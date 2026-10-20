@@ -138,7 +138,31 @@ const I18N = {
         msg_paused: '⏸ Paused',
         msg_resumed: '▶ Resumed',
         msg_star_1: '★☆☆ Bronze Milestone (100)!',
-        msg_star_2: '★★☆ Silver Milestone (220)!'
+        msg_star_2: '★★☆ Silver Milestone (220)!',
+
+        // Difficulty / Skill Level (Joke, Easy, Hard, Hardcore, Chuck Norris)
+        tip_difficulty: 'Skill Level / Win & Lose Conditions (Joke, Easy, Hard, Hardcore, Chuck Norris)',
+        diff_modal_badge: 'Win & Lose Dramaturgy',
+        diff_modal_title: 'Select Skill Level (Spielstärke)',
+        diff_lbl_win: 'Win (★/★★/★★★):',
+        diff_lbl_overload: 'Overload Limit:',
+        diff_lbl_timer: 'Alarm Speed:',
+        diff_lbl_hq: 'HQ Capacity:',
+        diff_joke_short: 'JOKE',
+        diff_joke_name: 'Joke (Sandbox)',
+        diff_joke_desc: 'Huge starting fleet, 5 bridges, generous queues (7+) & slow countdown.',
+        diff_easy_short: 'EASY',
+        diff_easy_name: 'Easy (Relaxed)',
+        diff_easy_desc: 'Forgiving overload limit (5+), 3 starting bridges & gentler rush hours.',
+        diff_hard_short: 'HARD',
+        diff_hard_name: 'Hard (Standard)',
+        diff_hard_desc: 'Tactical Dinosaur Polo Club balance: 4-order limit, Depot Gridlock & scarce bridges.',
+        diff_hardcore_short: 'HC',
+        diff_hardcore_name: 'Hardcore',
+        diff_hardcore_desc: 'Relentless: Overload at 3 orders (2 for XL), 1.45× alarm speed & tight HQ!',
+        diff_chuck_short: 'CHUCK',
+        diff_chuck_name: 'Chuck Norris',
+        diff_chuck_desc: '2 waiting orders trigger instant alarm (2.15×), 1 starting bike & early XL chaos!'
     },
 
     de: {
@@ -259,7 +283,30 @@ const I18N = {
         msg_paused: '⏸ Pausiert',
         msg_resumed: '▶ Weiter',
         msg_star_1: '★☆☆ Bronze-Meilenstein (100)!',
-        msg_star_2: '★★☆ Silber-Meilenstein (220)!'
+        msg_star_2: '★★☆ Silber-Meilenstein (220)!',
+
+        tip_difficulty: 'Spielstärke / Gewinn- & Verlierbedingungen (Joke, Easy, Hard, Hardcore, Chuck Norris)',
+        diff_modal_badge: 'Gewinn- & Verlier-Dramaturgie',
+        diff_modal_title: 'Spielstärke wählen',
+        diff_lbl_win: 'Sieg (★/★★/★★★):',
+        diff_lbl_overload: 'Überlastung ab:',
+        diff_lbl_timer: 'Countdown-Tempo:',
+        diff_lbl_hq: 'HQ-Kapazität:',
+        diff_joke_short: 'JOKE',
+        diff_joke_name: 'Joke (Zen-Spaß)',
+        diff_joke_desc: 'Riesige Startflotte, 5 Brücken, Überlastung erst ab 7 Paketen & extrem langsamer Timer.',
+        diff_easy_short: 'EASY',
+        diff_easy_name: 'Easy (Entspannt)',
+        diff_easy_desc: 'Verzeihendes Limit (ab 5 Paketen), 3 Startbrücken & sanfte Rush-Hour-Wellen.',
+        diff_hard_short: 'HARD',
+        diff_hard_name: 'Hard (Taktik)',
+        diff_hard_desc: 'Knackige Dramaturgie: Alarm ab 4 Paketen, Depot-Gridlock & knappe Brücken.',
+        diff_hardcore_short: 'HC',
+        diff_hardcore_name: 'Hardcore',
+        diff_hardcore_desc: 'Gnadenlos: Alarm schon ab 3 Paketen (2 bei XL), 1,45× Countdown & enges HQ!',
+        diff_chuck_short: 'CHUCK',
+        diff_chuck_name: 'Chuck Norris',
+        diff_chuck_desc: 'Alarm ab 2 wartenden Paketen (2,15× Tempo), nur 1 Start-Bike & frühes XL-Chaos!'
     },
 
     fr: {
@@ -380,7 +427,30 @@ const I18N = {
         msg_paused: '⏸ Pause',
         msg_resumed: '▶ Reprise',
         msg_star_1: '★☆☆ Palier Bronze (100) !',
-        msg_star_2: '★★☆ Palier Argent (220) !'
+        msg_star_2: '★★☆ Palier Argent (220) !',
+
+        tip_difficulty: 'Niveau de difficulté / Conditions de Victoire & Défaite (Joke, Easy, Hard, Hardcore, Chuck Norris)',
+        diff_modal_badge: 'Dramaturgie Victoire & Défaite',
+        diff_modal_title: 'Choisir la Difficulté',
+        diff_lbl_win: 'Victoire (★/★★/★★★) :',
+        diff_lbl_overload: 'Surcharge dès :',
+        diff_lbl_timer: 'Vitesse d’alarme :',
+        diff_lbl_hq: 'Capacité HQ :',
+        diff_joke_short: 'JOKE',
+        diff_joke_name: 'Joke (Bac à sable)',
+        diff_joke_desc: 'Grande flotte de départ, 5 ponts, alarme à 7+ colis & compte à rebours très lent.',
+        diff_easy_short: 'EASY',
+        diff_easy_name: 'Easy (Détendu)',
+        diff_easy_desc: 'Limite tolérante (5+ colis), 3 ponts de départ & heures de pointe douces.',
+        diff_hard_short: 'HARD',
+        diff_hard_name: 'Hard (Tactique)',
+        diff_hard_desc: 'Équilibre tactique : alarme à 4 colis, engorgement des dépôts & ponts rares.',
+        diff_hardcore_short: 'HC',
+        diff_hardcore_name: 'Hardcore',
+        diff_hardcore_desc: 'Impitoyable : alarme dès 3 colis (2 pour XL), alarme 1,45× plus rapide !',
+        diff_chuck_short: 'CHUCK',
+        diff_chuck_name: 'Chuck Norris',
+        diff_chuck_desc: 'Alarme dès 2 colis en attente (vitesse 2,15×), 1 seul vélo de départ & chaos XL !'
     },
 
     es: {
@@ -501,7 +571,30 @@ const I18N = {
         msg_paused: '⏸ Pausado',
         msg_resumed: '▶ Reanudado',
         msg_star_1: '¡★☆☆ Meta de Bronce (100)!',
-        msg_star_2: '¡★★☆ Meta de Plata (220)!'
+        msg_star_2: '¡★★☆ Meta de Plata (220)!',
+
+        tip_difficulty: 'Nivel de Dificultad / Condiciones de Victoria y Derrota (Joke, Easy, Hard, Hardcore, Chuck Norris)',
+        diff_modal_badge: 'Dramaturgia de Victoria y Derrota',
+        diff_modal_title: 'Seleccionar Dificultad',
+        diff_lbl_win: 'Victoria (★/★★/★★★):',
+        diff_lbl_overload: 'Sobrecarga en:',
+        diff_lbl_timer: 'Velocidad alarma:',
+        diff_lbl_hq: 'Capacidad HQ:',
+        diff_joke_short: 'JOKE',
+        diff_joke_name: 'Joke (Sandbox)',
+        diff_joke_desc: 'Gran flota inicial, 5 puentes, alarma con 7+ paquetes y temporizador muy lento.',
+        diff_easy_short: 'EASY',
+        diff_easy_name: 'Easy (Relajado)',
+        diff_easy_desc: 'Límite tolerante (5+ paquetes), 3 puentes iniciales y hora punta suave.',
+        diff_hard_short: 'HARD',
+        diff_hard_name: 'Hard (Táctico)',
+        diff_hard_desc: 'Equilibrio táctico: alarma con 4 paquetes, bloqueo de depósitos y puentes escasos.',
+        diff_hardcore_short: 'HC',
+        diff_hardcore_name: 'Hardcore',
+        diff_hardcore_desc: 'Implacable: alarma con 3 paquetes (2 en XL), temporizador 1,45× más rápido.',
+        diff_chuck_short: 'CHUCK',
+        diff_chuck_name: 'Chuck Norris',
+        diff_chuck_desc: '¡Alarma con solo 2 paquetes (2,15× velocidad), 1 moto inicial y caos XL temprano!'
     },
 
     zh: {
@@ -622,7 +715,30 @@ const I18N = {
         msg_paused: '⏸ 已暂停',
         msg_resumed: '▶ 已继续',
         msg_star_1: '★☆☆ 达成铜牌里程碑 (100)！',
-        msg_star_2: '★★☆ 达成银牌里程碑 (220)！'
+        msg_star_2: '★★☆ 达成银牌里程碑 (220)！',
+
+        tip_difficulty: '游戏难度 / 胜负条件 (Joke, Easy, Hard, Hardcore, Chuck Norris)',
+        diff_modal_badge: '胜负条件与难度曲线',
+        diff_modal_title: '选择游戏难度',
+        diff_lbl_win: '通关目标 (★/★★/★★★)：',
+        diff_lbl_overload: '爆仓阈值：',
+        diff_lbl_timer: '告警速度：',
+        diff_lbl_hq: '总仓容量：',
+        diff_joke_short: '娱乐',
+        diff_joke_name: 'Joke (沙盒娱乐)',
+        diff_joke_desc: '豪华初始车队、5座桥梁、7件包裹才触发告警且倒计时极慢。',
+        diff_easy_short: '简单',
+        diff_easy_name: 'Easy (轻松休闲)',
+        diff_easy_desc: '宽容积压上限 (5件+)、3座初始桥梁与平缓的高峰期。',
+        diff_hard_short: '困难',
+        diff_hard_name: 'Hard (标准策略)',
+        diff_hard_desc: '标准战术平衡：4件包裹触发告警、总仓爆仓机制与紧凑桥梁资源。',
+        diff_hardcore_short: '硬核',
+        diff_hardcore_name: 'Hardcore (硬核)',
+        diff_hardcore_desc: '冷酷挑战：3件包裹即告警 (XL仅2件)、1.45倍倒计时速度！',
+        diff_chuck_short: '诺里斯',
+        diff_chuck_name: 'Chuck Norris (地狱)',
+        diff_chuck_desc: '积压2件立即告警 (2.15倍极速)、仅1辆初始摩托与第一周XL重货突袭！'
     }
 };
 

@@ -41,6 +41,14 @@
 - **Dual Lose Conditions (Real Tactical Stakes):**
   1. **Customer Station Overload:** As soon as an `S`/`L` station accumulates **4 waiting orders** (or **3 waiting orders** at an `XL` station), a pulsing red countdown ring begins ticking (`~22s` down to `~6.5s` under heavy backlog). Delivering a single parcel buys only a brief `-14%` breather—you must bring the queue below threshold to clear the alarm!
   2. **Depot / Hub Gridlock:** If your lines fail to drain cargo fast enough and any **Main Depot (`HQ`, cap 24)** or **Transfer Hub (`S: 6`, `L: 12`, `XL: 20`)** exceeds **85% capacity**, the depot itself enters a red Gridlock Countdown!
+- **5-Tier Skill Level / Difficulty Selector (`🤡 Joke` → `🤠 Chuck Norris`):** Click the top-left **Skill Level pill (`⚡ Hard`)** at any time to scale both **Win Targets (`★ / ★★ / ★★★`)** and **Lose Conditions** across 5 distinct tiers:
+  | Tier | Win Targets (`★ / ★★ / ★★★`) | Overload Limit (`S·L` / `XL`) | Timer Speed & Relief | HQ Cap & Gridlock | Starting Fleet |
+  | :--- | :---: | :---: | :---: | :---: | :--- |
+  | 🤡 **Joke** | `30 / 60 / 100` | `≥ 7` / `≥ 6` | `0.35×` (`-45%` relief) | Cap `72` (`> 98%`) | `4 Lines, 4 Bikes, 1 Car, 3 Drones, 5 Bridges, 3 Hubs` |
+  | 🌱 **Easy** | `75 / 160 / 260` | `≥ 5` / `≥ 4` | `0.68×` (`-24%` relief) | Cap `36` (`> 90%`) | `3 Lines, 3 Bikes, 1 Drone, 3 Bridges, 1 S-Hub` |
+  | ⚡ **Hard** *(Default)* | `100 / 220 / 350` | `≥ 4` / `≥ 3` | `1.00×` (`-14%` relief) | Cap `24` (`> 85%`) | `2 Lines, 2 Bikes, 1 Drone, 1 Bridge` |
+  | 🔥 **Hardcore** | `150 / 320 / 500` | `≥ 3` / `≥ 2` | `1.45×` (`-9%` relief) | Cap `19` (`> 78%`) | `2 Lines, 2 Bikes, 0 Drones, 1 Bridge` |
+  | 🤠 **Chuck Norris** | `250 / 500 / 777` | `≥ 2` / `≥ 2` | `2.15×` (`-6%` relief) | Cap `15` (`> 70%`) | `2 Lines, 1 Bike, 0 Drones, 1 Bridge` + Week 1 `XL` |
 - **Automatic Director Camera:** No manual panning required—the camera automatically frames all active stations and smoothly zooms out (`1.75× → 0.58×`) using critically damped interpolation as new districts emerge across the map.
 
 ---

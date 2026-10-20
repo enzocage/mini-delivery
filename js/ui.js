@@ -123,9 +123,10 @@ function updateTokenUI(toolKey, badgeId) {
 
 function updateGoalUI() {
     const score = state.score;
-    const t1 = STAR_TARGETS[0];
-    const t2 = STAR_TARGETS[1];
-    const t3 = STAR_TARGETS[2];
+    const targets = getStarTargets();
+    const t1 = targets[0];
+    const t2 = targets[1];
+    const t3 = targets[2];
 
     const stars = score >= t3 ? '★★★' : (score >= t2 ? '★★☆' : (score >= t1 ? '★☆☆' : '☆☆☆'));
     const nextTarget = score < t1 ? t1 : (score < t2 ? t2 : t3);
@@ -140,6 +141,12 @@ function updateGoalUI() {
     if (starsEl) starsEl.textContent = stars;
     if (targetEl) targetEl.textContent = score >= t3 ? ' · MAX' : `/${nextTarget}`;
     if (barEl) barEl.style.width = `${pct.toFixed(1)}%`;
+
+    const dSpec = getDifficultySpec();
+    const diffLabel = document.getElementById('uiDiffLabel');
+    const diffIcon = document.getElementById('uiDiffIcon');
+    if (diffLabel) diffLabel.textContent = t(`diff_${dSpec.id}_short`);
+    if (diffIcon) diffIcon.style.color = dSpec.color;
 }
 
 function updateAllUI() {
@@ -336,17 +343,96 @@ function triggerVictoryModal() {
     setGameSpeed(0);
     sfx.playWeeklyChord();
     const city = currentCity();
+    const targets = getStarTargets();
     saveCityRecord(city.id, state.score, 3);
 
     const vicTitle = document.getElementById('vicTitle');
     const vicSubtitle = document.getElementById('vicSubtitle');
     if (vicTitle) vicTitle.textContent = t('vic_title_city', { city: city.name });
-    if (vicSubtitle) vicSubtitle.textContent = t('vic_sub_city', { target: STAR_TARGETS[2] });
+    if (vicSubtitle) vicSubtitle.textContent = t('vic_sub_city', { target: targets[2] });
     document.getElementById('vicScore').textContent = state.score;
     document.getElementById('vicDays').textContent = state.dayCount;
     document.getElementById('vicDepots').textContent = state.nodes.filter(n => n.kind === 'DEPOT').length;
     document.getElementById('victoryModal').classList.remove('hidden');
 }
+
+function buildDifficultyModalGrid() {
+    const container = document.getElementById('difficultyCardsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const tiers = ['joke', 'easy', 'hard', 'hardcore', 'chuck'];
+    const icons = {
+        joke: '🤡',
+        easy: '🌱',
+        hard: '⚡',
+        hardcore: '🔥',
+        chuck: '🤠'
+    };
+
+    tiers.forEach((tierId, idx) => {
+        const spec = DIFFICULTY_SPECS[tierId];
+        const isCurrent = state.difficulty === tierId;
+        const card = document.createElement('button');
+        card.style.animationDelay = `${idx * 60}ms`;
+        card.className = `dpc-pill upgrade-card-anim rounded-[28px] p-4 text-left flex flex-col justify-between hover:scale-[1.03] active:scale-95 transition-transform cursor-pointer ${isCurrent ? 'ring-2 ring-amber-500' : ''}`;
+
+        const hqCap = Math.max(4, Math.round(DEPOT_SPECS.MAIN.cap * spec.depotCapMult));
+        card.innerHTML = `
+            <div>
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <span class="w-9 h-9 rounded-2xl flex items-center justify-center text-lg shadow-sm" style="background:${spec.color}22; color:${spec.color}">${icons[tierId]}</span>
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-white uppercase tracking-wider" style="background:${spec.color}">
+                        ${t(`diff_${tierId}_short`)}
+                    </span>
+                </div>
+                <h3 class="font-extrabold text-sm sm:text-base leading-tight mb-1">${t(`diff_${tierId}_name`)}</h3>
+                <p class="text-[11px] opacity-70 leading-snug mb-3">${t(`diff_${tierId}_desc`)}</p>
+
+                <div class="space-y-1.5 text-[10px] border-t border-black/10 dark:border-white/10 pt-2.5 mb-3">
+                    <div class="flex justify-between">
+                        <span class="opacity-60 font-bold">${t('diff_lbl_win')}</span>
+                        <span class="font-mono-num font-extrabold text-amber-500">${spec.starTargets.join(' / ')}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="opacity-60 font-bold">${t('diff_lbl_overload')}</span>
+                        <span class="font-mono-num font-extrabold text-rose-500">≥ ${spec.maxOrdersSL} (${spec.maxOrdersXL} XL)</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="opacity-60 font-bold">${t('diff_lbl_timer')}</span>
+                        <span class="font-mono-num font-extrabold">${spec.overloadSpeedMult}×</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="opacity-60 font-bold">${t('diff_lbl_hq')}</span>
+                        <span class="font-mono-num font-extrabold text-sky-500">${hqCap} Pkgs</span>
+                    </div>
+                </div>
+            </div>
+            <div class="w-full py-2 rounded-full text-center text-[11px] font-extrabold text-white shadow" style="background:${spec.color}">
+                ${isCurrent ? '✓ ' + t('upg_select') : t('upg_select')}
+            </div>
+        `;
+
+        card.addEventListener('click', () => {
+            state.difficulty = tierId;
+            try { localStorage.setItem('miniDelivery_difficulty', tierId); } catch (e) {}
+            document.getElementById('difficultyModal').classList.add('hidden');
+            initCity(state.cityIndex);
+            showFloatingText(state.cam.x, state.cam.y - 24, `${icons[tierId]} ${t(`diff_${tierId}_name`)}`, spec.color);
+        });
+        container.appendChild(card);
+    });
+}
+
+document.getElementById('btnOpenDifficulty').addEventListener('click', () => {
+    setGameSpeed(0);
+    buildDifficultyModalGrid();
+    document.getElementById('difficultyModal').classList.remove('hidden');
+});
+
+document.getElementById('btnCloseDifficultyModal').addEventListener('click', () => {
+    document.getElementById('difficultyModal').classList.add('hidden');
+});
 
 document.getElementById('btnVictoryNextCity').addEventListener('click', () => {
     document.getElementById('victoryModal').classList.add('hidden');
@@ -660,6 +746,12 @@ window.onload = function () {
     const params = new URLSearchParams(window.location.search);
     const initialLang = params.get('lang') || 'en';
     const scene = params.get('scene');
+    try {
+        const savedDiff = params.get('diff') || localStorage.getItem('miniDelivery_difficulty');
+        if (savedDiff && DIFFICULTY_SPECS[savedDiff]) {
+            state.difficulty = savedDiff;
+        }
+    } catch (e) {}
 
     resizeCanvas();
     initCity(0);
