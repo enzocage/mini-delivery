@@ -137,6 +137,8 @@ const I18N = {
         msg_camera_reset: 'Auto-Camera Centered',
         msg_paused: '⏸ Paused',
         msg_resumed: '▶ Resumed',
+        msg_loop_closed: '🔄 Loop Line Closed',
+        msg_loop_opened: '🔓 Loop Line Reopened',
         msg_star_1: '★☆☆ Bronze Milestone (100)!',
         msg_star_2: '★★☆ Silver Milestone (220)!',
 
@@ -282,6 +284,8 @@ const I18N = {
         msg_camera_reset: 'Auto-Kamera zentriert',
         msg_paused: '⏸ Pausiert',
         msg_resumed: '▶ Weiter',
+        msg_loop_closed: '🔄 Ringlinie geschlossen',
+        msg_loop_opened: '🔓 Ringlinie geöffnet',
         msg_star_1: '★☆☆ Bronze-Meilenstein (100)!',
         msg_star_2: '★★☆ Silber-Meilenstein (220)!',
 
@@ -426,6 +430,8 @@ const I18N = {
         msg_camera_reset: 'Caméra auto recentrée',
         msg_paused: '⏸ Pause',
         msg_resumed: '▶ Reprise',
+        msg_loop_closed: '🔄 Ligne circulaire fermée',
+        msg_loop_opened: '🔓 Ligne circulaire rouverte',
         msg_star_1: '★☆☆ Palier Bronze (100) !',
         msg_star_2: '★★☆ Palier Argent (220) !',
 
@@ -570,6 +576,8 @@ const I18N = {
         msg_camera_reset: 'Cámara auto centrada',
         msg_paused: '⏸ Pausado',
         msg_resumed: '▶ Reanudado',
+        msg_loop_closed: '🔄 Línea circular cerrada',
+        msg_loop_opened: '🔓 Línea circular reabierta',
         msg_star_1: '¡★☆☆ Meta de Bronce (100)!',
         msg_star_2: '¡★★☆ Meta de Plata (220)!',
 
@@ -714,6 +722,8 @@ const I18N = {
         msg_camera_reset: '自动镜头已居中',
         msg_paused: '⏸ 已暂停',
         msg_resumed: '▶ 已继续',
+        msg_loop_closed: '🔄 环线已闭合',
+        msg_loop_opened: '🔓 环线已解开',
         msg_star_1: '★☆☆ 达成铜牌里程碑 (100)！',
         msg_star_2: '★★☆ 达成银牌里程碑 (220)！',
 

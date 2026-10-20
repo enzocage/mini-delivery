@@ -89,6 +89,7 @@ document.getElementById('btnInspRemoveNode').addEventListener('click', () => {
         const idx = l.nodeIds.indexOf(node.id);
         if (idx !== -1) {
             l.nodeIds.splice(idx, 1);
+            if (l.nodeIds.length < 3) l.isLoop = false;
             if (l.nodeIds.length < 2) {
                 clearLine(l);
             } else {
@@ -174,8 +175,10 @@ function updateAllUI() {
         btn.className = `line-token font-mono-num text-[11px] font-extrabold text-white ${isSelected ? 'selected' : ''} ${!isUsed ? 'unused' : ''}`;
         btn.style.backgroundColor = line.color;
         btn.style.color = line.color;
-        btn.innerHTML = `<span class="text-white">${line.vehicles.length || ''}</span>`;
-        btn.title = `${getLineName(line.id)} (${t('vehicles_count', { n: line.vehicles.length })})`;
+        const vehText = line.vehicles.length || '';
+        const loopBadge = (line.isLoop && line.nodeIds.length >= 3) ? '⟳' : '';
+        btn.innerHTML = `<span class="text-white leading-none">${vehText}${loopBadge}</span>`;
+        btn.title = `${getLineName(line.id)}${line.isLoop ? ' (⟳)' : ''} (${t('vehicles_count', { n: line.vehicles.length })})`;
 
         btn.addEventListener('mouseenter', () => { state.hoveredLineId = line.id; });
         btn.addEventListener('mouseleave', () => { state.hoveredLineId = null; });

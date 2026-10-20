@@ -70,6 +70,21 @@ function findLineTerminalAtWorld(wx, wy, isTouch = state.drag.isTouch) {
         const line = state.lines[i];
         if (!line || line.nodeIds.length < 2) continue;
 
+        if (line.isLoop && line.nodeIds.length >= 3) {
+            const firstNode = state.nodes.find(n => n.id === line.nodeIds[0]);
+            const secondNode = state.nodes.find(n => n.id === line.nodeIds[1]);
+            const lastNode = state.nodes.find(n => n.id === line.nodeIds[line.nodeIds.length - 1]);
+            const cap = getLoopCapPoint(firstNode, secondNode, lastNode);
+            if (cap) {
+                const d = dist(wx, wy, cap.x, cap.y);
+                if (d <= bestDist) {
+                    bestDist = d;
+                    bestHit = { line, node: firstNode, neighbor: lastNode, nodeIndex: 0, isLoopCap: true };
+                }
+            }
+            continue;
+        }
+
         const ends = [
             { node: state.nodes.find(n => n.id === line.nodeIds[0]), neighbor: state.nodes.find(n => n.id === line.nodeIds[1]), idx: 0 },
             { node: state.nodes.find(n => n.id === line.nodeIds[line.nodeIds.length - 1]), neighbor: state.nodes.find(n => n.id === line.nodeIds[line.nodeIds.length - 2]), idx: line.nodeIds.length - 1 }
@@ -81,7 +96,7 @@ function findLineTerminalAtWorld(wx, wy, isTouch = state.drag.isTouch) {
                 const d = dist(wx, wy, tbar.x, tbar.y);
                 if (d <= bestDist) {
                     bestDist = d;
-                    bestHit = { line, node: end.node, neighbor: end.neighbor, nodeIndex: end.idx };
+                    bestHit = { line, node: end.node, neighbor: end.neighbor, nodeIndex: end.idx, isLoopCap: false };
                 }
             }
         }
@@ -103,9 +118,11 @@ function findLineConnectorAtWorld(wx, wy, isTouch = state.drag.isTouch) {
         const line = state.lines[li];
         if (!line || line.nodeIds.length < 2) continue;
 
-        for (let i = 0; i < line.nodeIds.length - 1; i++) {
-            const n1 = state.nodes.find(n => n.id === line.nodeIds[i]);
-            const n2 = state.nodes.find(n => n.id === line.nodeIds[i + 1]);
+        const segCount = getLineSegmentCount(line);
+        for (let i = 0; i < segCount; i++) {
+            const [id1, id2] = getLineSegmentNodeIds(line, i);
+            const n1 = state.nodes.find(n => n.id === id1);
+            const n2 = state.nodes.find(n => n.id === id2);
             if (!n1 || !n2) continue;
 
             const laneOffset = getSegmentParallelOffset(line.id, n1.id, n2.id);
@@ -116,14 +133,14 @@ function findLineConnectorAtWorld(wx, wy, isTouch = state.drag.isTouch) {
                 const d2 = dist(wx, wy, c2.x, c2.y);
                 if (d2 < bestDist) {
                     bestDist = d2;
-                    bestHit = { line, node: n2, neighborNode: n1, nodeIndex: i + 1, x: c2.x, y: c2.y };
+                    bestHit = { line, node: n2, neighborNode: n1, nodeIndex: (i + 1) % line.nodeIds.length, segIndex: i, side: 'n2', x: c2.x, y: c2.y };
                 }
             }
             if (c1) {
                 const d1 = dist(wx, wy, c1.x, c1.y);
                 if (d1 < bestDist) {
                     bestDist = d1;
-                    bestHit = { line, node: n1, neighborNode: n2, nodeIndex: i, x: c1.x, y: c1.y };
+                    bestHit = { line, node: n1, neighborNode: n2, nodeIndex: i, segIndex: i, side: 'n1', x: c1.x, y: c1.y };
                 }
             }
         }
@@ -138,9 +155,11 @@ function findLineSegmentDetailAtWorld(wx, wy, maxDist = 16, isTouch = state.drag
     for (let i = 0; i < state.unlockedLines; i++) {
         const line = state.lines[i];
         if (!line || line.nodeIds.length < 2) continue;
-        for (let j = 0; j < line.nodeIds.length - 1; j++) {
-            const n1 = state.nodes.find(n => n.id === line.nodeIds[j]);
-            const n2 = state.nodes.find(n => n.id === line.nodeIds[j + 1]);
+        const segCount = getLineSegmentCount(line);
+        for (let j = 0; j < segCount; j++) {
+            const [id1, id2] = getLineSegmentNodeIds(line, j);
+            const n1 = state.nodes.find(n => n.id === id1);
+            const n2 = state.nodes.find(n => n.id === id2);
             if (!n1 || !n2) continue;
             const laneOffset = getSegmentParallelOffset(line.id, n1.id, n2.id);
             const pts = computeMetroWaypoints(n1.x, n1.y, n2.x, n2.y, laneOffset);
@@ -168,8 +187,52 @@ function findLineAtWorld(wx, wy, maxDist = 15, isTouch = state.drag.isTouch) {
     return hit ? hit.line : null;
 }
 
-function unplugStationFromLine(line, nodeIndex, wx, wy) {
+function reopenLoopIntoDrag(line, segIndex, detachedSide, wx, wy) {
+    if (!line || !line.isLoop || line.nodeIds.length < 3) return false;
+    const [id1, id2] = getLineSegmentNodeIds(line, segIndex);
+    const n1 = state.nodes.find(n => n.id === id1);
+    const n2 = state.nodes.find(n => n.id === id2);
+
+    openLineLoopAtSegment(line, segIndex);
+    // After openLineLoopAtSegment(line, segIndex):
+    // line.nodeIds[0] is id2 (n2), and line.nodeIds[last] is id1 (n1)
+    const detachedNode = detachedSide === 'n2' ? n2 : n1;
+    const anchorNode   = detachedSide === 'n2' ? n1 : n2;
+
+    state.selectedLineId = line.id;
+    state.drag.active = true;
+    state.drag.currWorldX = wx;
+    state.drag.currWorldY = wy;
+    state.drag.snapNode = null;
+    state.drag.detachedNode = detachedNode || null;
+    state.drag.hasLeftDetachedNode = false;
+    state.drag.mode = 'reroute_end';
+    state.drag.endSide = detachedSide === 'n2' ? 'tail' : 'head';
+    state.drag.anchorNode = anchorNode || null;
+    canvas.classList.add('dragging-active');
+
+    if (detachedNode) {
+        detachedNode.scaleVel = 2.4;
+        state.ripples.push({ x: detachedNode.x, y: detachedNode.y, r: detachedNode.radius, maxR: 42, color: line.color, alpha: 0.85 });
+        showFloatingText(detachedNode.x, detachedNode.y - 20, t('msg_loop_opened'), line.color);
+    }
+    triggerHaptic([10, 24, 10]);
+    sfx.playDisconnect();
+    updateAllUI();
+    return true;
+}
+
+function unplugStationFromLine(line, nodeIndex, wx, wy, connectorHit = null) {
     if (!line || nodeIndex < 0 || nodeIndex >= line.nodeIds.length) return false;
+
+    if (line.isLoop && line.nodeIds.length >= 3) {
+        const segIdx = connectorHit && connectorHit.segIndex !== undefined
+            ? connectorHit.segIndex
+            : ((nodeIndex - 1 + line.nodeIds.length) % line.nodeIds.length);
+        const side = connectorHit && connectorHit.side ? connectorHit.side : 'n2';
+        return reopenLoopIntoDrag(line, segIdx, side, wx, wy);
+    }
+
     const detachedId = line.nodeIds[nodeIndex];
     const detachedNode = state.nodes.find(n => n.id === detachedId);
 
@@ -179,6 +242,7 @@ function unplugStationFromLine(line, nodeIndex, wx, wy) {
     state.drag.currWorldY = wy;
     state.drag.snapNode = null;
     state.drag.detachedNode = detachedNode || null;
+    state.drag.hasLeftDetachedNode = true;
     canvas.classList.add('dragging-active');
 
     if (nodeIndex === line.nodeIds.length - 1) {
@@ -225,7 +289,27 @@ function connectNodesOnLine(line, nodeA, nodeB) {
     if (!line || !nodeA || !nodeB || nodeA.id === nodeB.id) return false;
     const city = currentCity();
 
-    if (line.nodeIds.length >= 2) {
+    // 1. Reopening a circularly closed line by dragging along an existing segment between two adjacent stations
+    if (line.isLoop && line.nodeIds.length >= 3) {
+        const segCount = getLineSegmentCount(line);
+        for (let i = 0; i < segCount; i++) {
+            const [id1, id2] = getLineSegmentNodeIds(line, i);
+            if ((id1 === nodeA.id && id2 === nodeB.id) || (id1 === nodeB.id && id2 === nodeA.id)) {
+                openLineLoopAtSegment(line, i);
+                nodeB.scaleVel = 2.2;
+                state.ripples.push({ x: nodeB.x, y: nodeB.y, r: nodeB.radius, maxR: 42, color: line.color, alpha: 0.85 });
+                showFloatingText(nodeB.x, nodeB.y - 20, t('msg_loop_opened'), line.color);
+                triggerHaptic([10, 24, 10]);
+                sfx.playDisconnect();
+                state.drag.justModifiedLoop = true;
+                updateAllUI();
+                return true;
+            }
+        }
+    }
+
+    // 2. Pulling back on an open line end to disconnect the last segment
+    if (!line.isLoop && line.nodeIds.length >= 2) {
         if (line.nodeIds[line.nodeIds.length - 1] === nodeA.id && line.nodeIds[line.nodeIds.length - 2] === nodeB.id) {
             line.nodeIds.pop();
             recalculateLineBridges(line);
@@ -254,6 +338,24 @@ function connectNodesOnLine(line, nodeA, nodeB) {
         return false;
     }
 
+    // 3. Circularly closing an open line (connecting tail to head or head to tail with >= 3 stations)
+    if (!line.isLoop && line.nodeIds.length >= 3) {
+        const headId = line.nodeIds[0];
+        const tailId = line.nodeIds[line.nodeIds.length - 1];
+        if ((nodeA.id === tailId && nodeB.id === headId) || (nodeA.id === headId && nodeB.id === tailId)) {
+            line.isLoop = true;
+            recalculateLineBridges(line);
+            nodeB.scaleVel = 2.8;
+            state.ripples.push({ x: nodeB.x, y: nodeB.y, r: nodeB.radius, maxR: 48, color: line.color, alpha: 0.92 });
+            showFloatingText(nodeB.x, nodeB.y - 20, t('msg_loop_closed'), line.color);
+            triggerHaptic([12, 22, 16]);
+            sfx.playConnect(crossesWater, line.id);
+            state.drag.justModifiedLoop = true;
+            updateAllUI();
+            return true;
+        }
+    }
+
     let modified = false;
     if (line.nodeIds.length === 0) {
         line.nodeIds.push(nodeA.id, nodeB.id);
@@ -261,19 +363,35 @@ function connectNodesOnLine(line, nodeA, nodeB) {
     } else if (line.nodeIds.length === 1 && line.nodeIds[0] === nodeA.id) {
         line.nodeIds.push(nodeB.id);
         modified = true;
-    } else if (line.nodeIds[line.nodeIds.length - 1] === nodeA.id && !line.nodeIds.includes(nodeB.id)) {
+    } else if (!line.isLoop && line.nodeIds[line.nodeIds.length - 1] === nodeA.id && !line.nodeIds.includes(nodeB.id)) {
         line.nodeIds.push(nodeB.id);
         modified = true;
-    } else if (line.nodeIds[0] === nodeA.id && !line.nodeIds.includes(nodeB.id)) {
+    } else if (!line.isLoop && line.nodeIds[0] === nodeA.id && !line.nodeIds.includes(nodeB.id)) {
         line.nodeIds.unshift(nodeB.id);
         modified = true;
     } else if (line.nodeIds.includes(nodeA.id) && !line.nodeIds.includes(nodeB.id)) {
         const idx = line.nodeIds.indexOf(nodeA.id);
         line.nodeIds.splice(idx + 1, 0, nodeB.id);
+        recalculateLineBridges(line);
+        if (state.inventory.bridges < 0) {
+            line.nodeIds.splice(idx + 1, 1);
+            recalculateLineBridges(line);
+            triggerHaptic([18, 30, 18]);
+            showFloatingText((nodeA.x + nodeB.x) / 2, (nodeA.y + nodeB.y) / 2, t('msg_no_bridge_drone'), '#EF4444');
+            return false;
+        }
         modified = true;
     } else if (!line.nodeIds.includes(nodeA.id) && line.nodeIds.includes(nodeB.id)) {
         const idx = line.nodeIds.indexOf(nodeB.id);
         line.nodeIds.splice(idx + 1, 0, nodeA.id);
+        recalculateLineBridges(line);
+        if (state.inventory.bridges < 0) {
+            line.nodeIds.splice(idx + 1, 1);
+            recalculateLineBridges(line);
+            triggerHaptic([18, 30, 18]);
+            showFloatingText((nodeA.x + nodeB.x) / 2, (nodeA.y + nodeB.y) / 2, t('msg_no_bridge_drone'), '#EF4444');
+            return false;
+        }
         modified = true;
     }
 
@@ -464,21 +582,27 @@ canvas.addEventListener('pointerdown', (e) => {
         setActiveTool('route');
     }
 
-    // 1. PRIORITY 1: Grabbing a Connector Plug ("Verbindungsstelle") immediately unplugs the line from that station!
+    // 1. PRIORITY 1: Grabbing a Connector Plug ("Verbindungsstelle") immediately unplugs the line from that station (or reopens a loop)!
     const connectorHit = findLineConnectorAtWorld(w.x, w.y, isTouch);
     if (connectorHit) {
         document.getElementById('nodeInspector').classList.add('hidden');
-        unplugStationFromLine(connectorHit.line, connectorHit.nodeIndex, w.x, w.y);
+        unplugStationFromLine(connectorHit.line, connectorHit.nodeIndex, w.x, w.y, connectorHit);
         return;
     }
 
-    // 2. PRIORITY 2: Grabbing a Mini Metro T-Bar terminal cap
+    // 2. PRIORITY 2: Grabbing a Mini Metro T-Bar terminal cap OR a Closed Loop Ring Cap (⟳)
     const terminalHit = findLineTerminalAtWorld(w.x, w.y, isTouch);
     if (terminalHit) {
+        if (terminalHit.isLoopCap) {
+            document.getElementById('nodeInspector').classList.add('hidden');
+            reopenLoopIntoDrag(terminalHit.line, terminalHit.line.nodeIds.length - 1, 'n2', w.x, w.y);
+            return;
+        }
         state.selectedLineId = terminalHit.line.id;
         state.drag.active = true;
         state.drag.mode = 'draw_line';
         state.drag.startNode = terminalHit.node;
+        state.drag.justModifiedLoop = false;
         state.drag.canPullBackUnplug = true;
         state.drag.pullBackNodeIndex = terminalHit.nodeIndex;
         state.drag.pullBackNeighbor = terminalHit.neighbor;
@@ -497,24 +621,35 @@ canvas.addEventListener('pointerdown', (e) => {
         state.selectedLineId = line.id;
         document.getElementById('nodeInspector').classList.add('hidden');
 
-        const isFirstSeg = segHit.segIndex === 0;
-        const isLastSeg  = segHit.segIndex === line.nodeIds.length - 2;
+        if (line.isLoop && line.nodeIds.length >= 3) {
+            if (segHit.distToN2 < 46 && segHit.distToN2 <= segHit.distToN1) {
+                reopenLoopIntoDrag(line, segHit.segIndex, 'n2', w.x, w.y);
+                return;
+            }
+            if (segHit.distToN1 < 46) {
+                reopenLoopIntoDrag(line, segHit.segIndex, 'n1', w.x, w.y);
+                return;
+            }
+        } else {
+            const isFirstSeg = segHit.segIndex === 0;
+            const isLastSeg  = segHit.segIndex === line.nodeIds.length - 2;
 
-        if (isLastSeg && (segHit.distToN2 < 52 || segHit.distToN2 < segHit.distToN1 * 0.95)) {
-            unplugStationFromLine(line, line.nodeIds.length - 1, w.x, w.y);
-            return;
-        }
-        if (isFirstSeg && (segHit.distToN1 < 52 || (line.nodeIds.length > 2 && segHit.distToN1 < segHit.distToN2 * 0.85))) {
-            unplugStationFromLine(line, 0, w.x, w.y);
-            return;
-        }
-        if (segHit.distToN1 < 36 && segHit.segIndex > 0) {
-            unplugStationFromLine(line, segHit.segIndex, w.x, w.y);
-            return;
-        }
-        if (segHit.distToN2 < 36 && segHit.segIndex + 1 < line.nodeIds.length - 1) {
-            unplugStationFromLine(line, segHit.segIndex + 1, w.x, w.y);
-            return;
+            if (isLastSeg && (segHit.distToN2 < 52 || segHit.distToN2 < segHit.distToN1 * 0.95)) {
+                unplugStationFromLine(line, line.nodeIds.length - 1, w.x, w.y);
+                return;
+            }
+            if (isFirstSeg && (segHit.distToN1 < 52 || (line.nodeIds.length > 2 && segHit.distToN1 < segHit.distToN2 * 0.85))) {
+                unplugStationFromLine(line, 0, w.x, w.y);
+                return;
+            }
+            if (segHit.distToN1 < 36 && segHit.segIndex > 0) {
+                unplugStationFromLine(line, segHit.segIndex, w.x, w.y);
+                return;
+            }
+            if (segHit.distToN2 < 36 && segHit.segIndex + 1 < line.nodeIds.length - 1) {
+                unplugStationFromLine(line, segHit.segIndex + 1, w.x, w.y);
+                return;
+            }
         }
 
         state.drag.active = true;
@@ -556,7 +691,8 @@ canvas.addEventListener('pointerdown', (e) => {
         let targetLine = state.lines[state.selectedLineId];
         if (targetLine.nodeIds.length >= 2 && !targetLine.nodeIds.includes(clickedNode.id)) {
             const lineOnNode = state.lines.slice(0, state.unlockedLines).find(l =>
-                l.nodeIds[0] === clickedNode.id || l.nodeIds[l.nodeIds.length - 1] === clickedNode.id
+                l.nodeIds[0] === clickedNode.id || l.nodeIds[l.nodeIds.length - 1] === clickedNode.id ||
+                (l.isLoop && l.nodeIds.includes(clickedNode.id))
             );
             const emptyLine = state.lines.slice(0, state.unlockedLines).find(l => l.nodeIds.length === 0);
             if (lineOnNode) {
@@ -571,8 +707,9 @@ canvas.addEventListener('pointerdown', (e) => {
         state.drag.active = true;
         state.drag.mode = 'draw_line';
         state.drag.startNode = clickedNode;
+        state.drag.justModifiedLoop = false;
 
-        if (targetLine.nodeIds.length >= 2 &&
+        if (!targetLine.isLoop && targetLine.nodeIds.length >= 2 &&
             (targetLine.nodeIds[0] === clickedNode.id || targetLine.nodeIds[targetLine.nodeIds.length - 1] === clickedNode.id)) {
             const isHead = targetLine.nodeIds[0] === clickedNode.id;
             state.drag.canPullBackUnplug = true;
@@ -723,8 +860,29 @@ window.addEventListener('pointermove', (e) => {
     }
 
     if (state.drag.mode === 'reroute_end' && state.drag.anchorNode) {
+        if (!state.drag.hasLeftDetachedNode && state.drag.detachedNode) {
+            if (dist(w.x, w.y, state.drag.detachedNode.x, state.drag.detachedNode.y) > state.drag.detachedNode.radius + 20) {
+                state.drag.hasLeftDetachedNode = true;
+            }
+        }
+
         const hoverNode = findNodeAtWorld(w.x, w.y, 15, isTouch);
-        if (hoverNode && hoverNode.id !== state.drag.anchorNode.id && !line.nodeIds.includes(hoverNode.id)) {
+        let validSnap = false;
+        if (hoverNode && hoverNode.id !== state.drag.anchorNode.id) {
+            if (!line.nodeIds.includes(hoverNode.id)) {
+                validSnap = true;
+            } else if (!line.isLoop && line.nodeIds.length >= 3) {
+                const oppositeEndId = state.drag.endSide === 'tail'
+                    ? line.nodeIds[0]
+                    : line.nodeIds[line.nodeIds.length - 1];
+                if (hoverNode.id === oppositeEndId &&
+                    (state.drag.hasLeftDetachedNode || !state.drag.detachedNode || hoverNode.id !== state.drag.detachedNode.id)) {
+                    validSnap = true;
+                }
+            }
+        }
+
+        if (validSnap) {
             if (lastSnapNodeId !== hoverNode.id) {
                 lastSnapNodeId = hoverNode.id;
                 triggerHaptic(8);
@@ -752,14 +910,22 @@ window.addEventListener('pointermove', (e) => {
         return;
     }
 
-    if (state.drag.mode === 'draw_line' && state.drag.startNode) {
+    if (state.drag.mode === 'draw_line' && state.drag.startNode && !state.drag.justModifiedLoop) {
         const hoverNode = findNodeAtWorld(w.x, w.y, 14, isTouch);
         state.drag.snapNode = (hoverNode && hoverNode.id !== state.drag.startNode.id) ? hoverNode : null;
         if (hoverNode && hoverNode.id !== state.drag.startNode.id) {
             if (connectNodesOnLine(line, state.drag.startNode, hoverNode)) {
-                state.drag.startNode = hoverNode;
-                state.drag.canPullBackUnplug = false;
-                state.drag.snapNode = null;
+                if (state.drag.justModifiedLoop) {
+                    state.drag.active = false;
+                    state.drag.mode = null;
+                    state.drag.startNode = null;
+                    state.drag.snapNode = null;
+                    canvas.classList.remove('dragging-active');
+                } else {
+                    state.drag.startNode = hoverNode;
+                    state.drag.canPullBackUnplug = false;
+                    state.drag.snapNode = null;
+                }
             }
         }
     }
@@ -807,26 +973,36 @@ function handlePointerEnd(e) {
     } else if (state.drag.mode === 'reroute_end' && line) {
         const target = state.drag.snapNode;
         const anchor = state.drag.anchorNode;
-        if (target && anchor && target.id !== anchor.id && !line.nodeIds.includes(target.id)) {
-            const crossesWater = doesMetroCorridorCrossWater(anchor.x, anchor.y, target.x, target.y, city);
-            if (crossesWater && state.inventory.bridges <= 0) {
-                triggerHaptic([16, 28, 16]);
-                showFloatingText(target.x, target.y - 18, t('msg_no_bridge'), '#EF4444');
-            } else {
-                if (state.drag.endSide === 'tail') {
-                    line.nodeIds.push(target.id);
-                } else {
-                    line.nodeIds.unshift(target.id);
-                }
-                recalculateLineBridges(line);
-                target.scaleVel = 2.8;
-                state.ripples.push({ x: target.x, y: target.y, r: target.radius, maxR: 42, color: line.color, alpha: 0.9 });
-                triggerHaptic(14);
-                sfx.playConnect(crossesWater, line.id);
+        if (target && anchor && target.id !== anchor.id) {
+            const oppositeEndId = state.drag.endSide === 'tail'
+                ? line.nodeIds[0]
+                : line.nodeIds[line.nodeIds.length - 1];
+            const isClosingLoop = !line.isLoop && line.nodeIds.length >= 3 && target.id === oppositeEndId;
 
-                if (target.demandType === 'XL' && !line.vehicles.some(v => v.type === 'car') && state.inventory.car > 0) {
-                    addVehicleToLine(line, 'car', false);
-                    showFloatingText(target.x, target.y - 22, t('msg_car_assigned_xl'), '#8B5CF6');
+            if (isClosingLoop || !line.nodeIds.includes(target.id)) {
+                const crossesWater = doesMetroCorridorCrossWater(anchor.x, anchor.y, target.x, target.y, city);
+                if (crossesWater && state.inventory.bridges <= 0) {
+                    triggerHaptic([16, 28, 16]);
+                    showFloatingText(target.x, target.y - 18, t('msg_no_bridge'), '#EF4444');
+                } else {
+                    if (isClosingLoop) {
+                        line.isLoop = true;
+                        showFloatingText(target.x, target.y - 20, t('msg_loop_closed'), line.color);
+                    } else if (state.drag.endSide === 'tail') {
+                        line.nodeIds.push(target.id);
+                    } else {
+                        line.nodeIds.unshift(target.id);
+                    }
+                    recalculateLineBridges(line);
+                    target.scaleVel = 2.8;
+                    state.ripples.push({ x: target.x, y: target.y, r: target.radius, maxR: 44, color: line.color, alpha: 0.9 });
+                    triggerHaptic(14);
+                    sfx.playConnect(crossesWater, line.id);
+
+                    if (target.demandType === 'XL' && !line.vehicles.some(v => v.type === 'car') && state.inventory.car > 0) {
+                        addVehicleToLine(line, 'car', false);
+                        showFloatingText(target.x, target.y - 22, t('msg_car_assigned_xl'), '#8B5CF6');
+                    }
                 }
             }
         }
@@ -876,6 +1052,8 @@ function handlePointerEnd(e) {
     state.drag.anchorNode = null;
     state.drag.snapNode = null;
     state.drag.detachedNode = null;
+    state.drag.hasLeftDetachedNode = false;
+    state.drag.justModifiedLoop = false;
     state.drag.canPullBackUnplug = false;
     lastSnapNodeId = null;
     canvas.classList.remove('dragging-active');

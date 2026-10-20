@@ -325,7 +325,8 @@ function handleVehicleStopAtNode(vehicle, line, node) {
 
 function updateLineVehicles(dt) {
     for (const line of state.lines) {
-        if (line.nodeIds.length < 2) continue;
+        const segCount = getLineSegmentCount(line);
+        if (segCount < 1) continue;
 
         for (const v of line.vehicles) {
             v.scale = damp(v.scale, 1.0, 12, dt);
@@ -340,13 +341,14 @@ function updateLineVehicles(dt) {
                 continue;
             }
 
-            if (v.segIndex >= line.nodeIds.length - 1) {
-                v.segIndex = Math.max(0, line.nodeIds.length - 2);
+            if (v.segIndex >= segCount || v.segIndex < 0) {
+                v.segIndex = Math.max(0, segCount - 1);
                 v.progress = 0;
             }
 
-            const nA = state.nodes.find(n => n.id === line.nodeIds[v.segIndex]);
-            const nB = state.nodes.find(n => n.id === line.nodeIds[v.segIndex + 1]);
+            const [idA, idB] = getLineSegmentNodeIds(line, v.segIndex);
+            const nA = state.nodes.find(n => n.id === idA);
+            const nB = state.nodes.find(n => n.id === idB);
             if (!nA || !nB) continue;
 
             const fromNode = v.dir === 1 ? nA : nB;
@@ -378,17 +380,25 @@ function updateLineVehicles(dt) {
 
                 handleVehicleStopAtNode(v, line, toNode);
 
-                if (v.dir === 1) {
-                    if (v.segIndex < line.nodeIds.length - 2) {
-                        v.segIndex++;
+                if (line.isLoop && line.nodeIds.length >= 3) {
+                    if (v.dir === 1) {
+                        v.segIndex = (v.segIndex + 1) % segCount;
                     } else {
-                        v.dir = -1;
+                        v.segIndex = (v.segIndex - 1 + segCount) % segCount;
                     }
                 } else {
-                    if (v.segIndex > 0) {
-                        v.segIndex--;
+                    if (v.dir === 1) {
+                        if (v.segIndex < segCount - 1) {
+                            v.segIndex++;
+                        } else {
+                            v.dir = -1;
+                        }
                     } else {
-                        v.dir = 1;
+                        if (v.segIndex > 0) {
+                            v.segIndex--;
+                        } else {
+                            v.dir = 1;
+                        }
                     }
                 }
             } else {

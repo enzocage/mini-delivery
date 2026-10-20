@@ -357,6 +357,7 @@ function initCity(cityIdx) {
         name: c.name,
         color: c.hex,
         nodeIds: [],
+        isLoop: false,
         bridgesUsed: 0,
         vehicles: []
     }));
@@ -558,11 +559,13 @@ function addVehicleToLine(line, vType, freeFromStarter = false, spawnX = null, s
 
     let segIdx = 0;
     let startNode = state.nodes.find(n => n.id === line.nodeIds[0]);
+    const segCount = getLineSegmentCount(line);
     if (spawnX !== null && spawnY !== null) {
         let bestD = Infinity;
-        for (let i = 0; i < line.nodeIds.length - 1; i++) {
-            const n1 = state.nodes.find(n => n.id === line.nodeIds[i]);
-            const n2 = state.nodes.find(n => n.id === line.nodeIds[i + 1]);
+        for (let i = 0; i < segCount; i++) {
+            const [id1, id2] = getLineSegmentNodeIds(line, i);
+            const n1 = state.nodes.find(n => n.id === id1);
+            const n2 = state.nodes.find(n => n.id === id2);
             if (!n1 || !n2) continue;
             const d = distToSegment(spawnX, spawnY, n1.x, n1.y, n2.x, n2.y);
             if (d < bestD) {
@@ -573,13 +576,19 @@ function addVehicleToLine(line, vType, freeFromStarter = false, spawnX = null, s
         }
     }
 
+    const startDir = (line.isLoop && line.vehicles.length % 2 === 1) ? -1 : 1;
+    if (startDir === -1 && segCount > 0) {
+        const [, id2] = getLineSegmentNodeIds(line, segIdx);
+        startNode = state.nodes.find(n => n.id === id2) || startNode;
+    }
+
     line.vehicles.push({
         id: getUID(),
         type: vType,
         lineId: line.id,
         segIndex: segIdx,
         progress: 0,
-        dir: 1,
+        dir: startDir,
         x: startNode ? startNode.x : 500,
         y: startNode ? startNode.y : 325,
         angle: 0,
@@ -597,11 +606,17 @@ function recalculateLineBridges(line) {
     state.inventory.bridges += line.bridgesUsed;
     line.bridgesUsed = 0;
 
+    if (line.nodeIds.length < 3) {
+        line.isLoop = false;
+    }
+
     const city = currentCity();
     let needed = 0;
-    for (let i = 0; i < line.nodeIds.length - 1; i++) {
-        const n1 = state.nodes.find(n => n.id === line.nodeIds[i]);
-        const n2 = state.nodes.find(n => n.id === line.nodeIds[i + 1]);
+    const segCount = getLineSegmentCount(line);
+    for (let i = 0; i < segCount; i++) {
+        const [id1, id2] = getLineSegmentNodeIds(line, i);
+        const n1 = state.nodes.find(n => n.id === id1);
+        const n2 = state.nodes.find(n => n.id === id2);
         if (!n1 || !n2) continue;
         if (doesMetroCorridorCrossWater(n1.x, n1.y, n2.x, n2.y, city)) {
             needed++;
@@ -611,6 +626,40 @@ function recalculateLineBridges(line) {
     state.inventory.bridges -= needed;
 }
 
+function openLineLoopAtSegment(line, segIdx) {
+    if (!line || !line.isLoop || line.nodeIds.length < 3) return false;
+    const N = line.nodeIds.length;
+    const normSeg = ((segIdx % N) + N) % N;
+
+    // Rotate nodeIds so the broken segment (normSeg -> (normSeg+1)%N) becomes the new open ends:
+    // head = oldNodeIds[(normSeg + 1) % N], tail = oldNodeIds[normSeg]
+    const rotated = [];
+    for (let k = 1; k <= N; k++) {
+        rotated.push(line.nodeIds[(normSeg + k) % N]);
+    }
+    line.nodeIds = rotated;
+    line.isLoop = false;
+
+    for (const v of line.vehicles) {
+        if (v.segIndex === normSeg) {
+            const closerToHead = (v.dir === 1 && v.progress >= 0.5) || (v.dir === -1 && v.progress < 0.5);
+            if (closerToHead) {
+                v.segIndex = 0;
+                v.progress = 0;
+                v.dir = 1;
+            } else {
+                v.segIndex = Math.max(0, N - 2);
+                v.progress = 0;
+                v.dir = -1;
+            }
+        } else {
+            v.segIndex = (v.segIndex - (normSeg + 1) + N) % N;
+        }
+    }
+    recalculateLineBridges(line);
+    return true;
+}
+
 function clearLine(line) {
     if (!line) return;
     for (const v of line.vehicles) {
@@ -618,6 +667,7 @@ function clearLine(line) {
     }
     line.vehicles = [];
     line.nodeIds = [];
+    line.isLoop = false;
     recalculateLineBridges(line);
     sfx.playDisconnect();
     updateAllUI();

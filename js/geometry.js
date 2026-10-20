@@ -112,14 +112,25 @@ function doesMetroCorridorCrossWater(x1, y1, x2, y2, city) {
     return false;
 }
 
+function getLineSegmentCount(line) {
+    if (!line || line.nodeIds.length < 2) return 0;
+    return (line.isLoop && line.nodeIds.length >= 3) ? line.nodeIds.length : line.nodeIds.length - 1;
+}
+
+function getLineSegmentNodeIds(line, segIndex) {
+    const n = line.nodeIds.length;
+    return [line.nodeIds[segIndex % n], line.nodeIds[(segIndex + 1) % n]];
+}
+
 // Compute parallel lane offset when multiple lines share the same pair of stations
 function getSegmentParallelOffset(lineId, nodeAId, nodeBId) {
     const minId = Math.min(nodeAId, nodeBId);
     const maxId = Math.max(nodeAId, nodeBId);
     const sharingLines = [];
     for (const l of state.lines) {
-        for (let i = 0; i < l.nodeIds.length - 1; i++) {
-            const a = l.nodeIds[i], b = l.nodeIds[i + 1];
+        const segCount = getLineSegmentCount(l);
+        for (let i = 0; i < segCount; i++) {
+            const [a, b] = getLineSegmentNodeIds(l, i);
             if ((a === minId && b === maxId) || (a === maxId && b === minId)) {
                 sharingLines.push(l.id);
                 break;
@@ -134,7 +145,7 @@ function getSegmentParallelOffset(lineId, nodeAId, nodeBId) {
     return centered * 6.5 * sign;
 }
 
-// Compute exact Connector Plug ("Verbindungsstelle") and T-Bar coordinates on the rendered corridor
+// Compute exact Connector Plug ("Verbindungsstelle"), T-Bar & Loop-Cap coordinates on the rendered corridor
 function getConnectorPoint(node, neighborNode, laneOffset = 0) {
     if (!node || !neighborNode) return null;
     const pts = computeMetroWaypoints(node.x, node.y, neighborNode.x, neighborNode.y, laneOffset);
@@ -154,6 +165,32 @@ function getTerminalTBarPoint(node, neighborNode, laneOffset = 0) {
     const nextPt = pts[1] || [neighborNode.x, neighborNode.y];
     const angle = Math.atan2(node.y - nextPt[1], node.x - nextPt[0]);
     const stemDist = node.radius + 10.5;
+    return {
+        x: node.x + Math.cos(angle) * stemDist,
+        y: node.y + Math.sin(angle) * stemDist,
+        angle,
+        stemDist
+    };
+}
+
+function getLoopCapPoint(node, neighborA, neighborB) {
+    if (!node || !neighborA || !neighborB) return null;
+    const ptsA = computeMetroWaypoints(node.x, node.y, neighborA.x, neighborA.y, 0);
+    const nextA = ptsA[1] || [neighborA.x, neighborA.y];
+    const angA = Math.atan2(nextA[1] - node.y, nextA[0] - node.x);
+
+    const ptsB = computeMetroWaypoints(node.x, node.y, neighborB.x, neighborB.y, 0);
+    const nextB = ptsB[1] || [neighborB.x, neighborB.y];
+    const angB = Math.atan2(nextB[1] - node.y, nextB[0] - node.x);
+
+    let vx = -(Math.cos(angA) + Math.cos(angB));
+    let vy = -(Math.sin(angA) + Math.sin(angB));
+    if (Math.hypot(vx, vy) < 0.25) {
+        vx = -Math.sin(angA);
+        vy = Math.cos(angA);
+    }
+    const angle = Math.atan2(vy, vx);
+    const stemDist = node.radius + 12.0;
     return {
         x: node.x + Math.cos(angle) * stemDist,
         y: node.y + Math.sin(angle) * stemDist,

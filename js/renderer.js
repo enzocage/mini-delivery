@@ -73,6 +73,52 @@ function drawLineTerminalTBar(ctx, node, neighborNode, color, isHovered) {
     ctx.restore();
 }
 
+function drawLineLoopCap(ctx, node, neighborA, neighborB, color, isHovered) {
+    const cap = getLoopCapPoint(node, neighborA, neighborB);
+    if (!cap) return;
+    const ringDist = node.radius + (isHovered ? 13.5 : 11.5);
+    const ringR = isHovered ? 6.2 : 5.0;
+
+    ctx.save();
+    ctx.translate(node.x, node.y);
+    ctx.rotate(cap.angle);
+
+    if (isHovered) {
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.25;
+        ctx.beginPath();
+        ctx.arc(ringDist, 0, ringR + 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+    }
+
+    ctx.strokeStyle = color;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = isHovered ? 5.2 : 4.2;
+    ctx.beginPath();
+    ctx.moveTo(node.radius * 0.6, 0);
+    ctx.lineTo(ringDist - ringR, 0);
+    ctx.stroke();
+
+    ctx.fillStyle = state.nightMode ? '#182232' : '#F4F1EA';
+    ctx.beginPath();
+    ctx.arc(ringDist, 0, ringR, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = isHovered ? 3.4 : 2.8;
+    ctx.beginPath();
+    ctx.arc(ringDist, 0, ringR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(ringDist, 0, isHovered ? 2.2 : 1.7, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
 function drawConnectorPlug(ctx, x, y, color, isHovered = false) {
     ctx.save();
     ctx.translate(x, y);
@@ -230,7 +276,7 @@ function renderGame() {
         ctx.restore();
     }
 
-    // 7. Logistics Corridors (Lines), Parallel Offsets, Bridges, T-Bar Terminals & Connector Plugs
+    // 7. Logistics Corridors (Lines), Parallel Offsets, Bridges, T-Bar / Loop-Cap Terminals & Connector Plugs
     for (const line of state.lines) {
         if (line.nodeIds.length < 2) continue;
         const isSelected = line.id === state.selectedLineId || line.id === state.hoveredLineId || line.id === state.hover.lineId;
@@ -241,20 +287,26 @@ function renderGame() {
         const prevLastNode = state.nodes.find(n => n.id === line.nodeIds[line.nodeIds.length - 2]);
 
         const draggingThisLine = state.drag.active && state.selectedLineId === line.id;
-        if (!(draggingThisLine && state.drag.mode === 'reroute_end' && state.drag.endSide === 'head')) {
-            drawLineTerminalTBar(ctx, firstNode, secondNode, line.color, isSelected);
-        }
-        if (!(draggingThisLine && state.drag.mode === 'reroute_end' && state.drag.endSide === 'tail')) {
-            drawLineTerminalTBar(ctx, lastNode, prevLastNode, line.color, isSelected);
+        if (line.isLoop && line.nodeIds.length >= 3) {
+            drawLineLoopCap(ctx, firstNode, secondNode, lastNode, line.color, isSelected);
+        } else {
+            if (!(draggingThisLine && state.drag.mode === 'reroute_end' && state.drag.endSide === 'head')) {
+                drawLineTerminalTBar(ctx, firstNode, secondNode, line.color, isSelected);
+            }
+            if (!(draggingThisLine && state.drag.mode === 'reroute_end' && state.drag.endSide === 'tail')) {
+                drawLineTerminalTBar(ctx, lastNode, prevLastNode, line.color, isSelected);
+            }
         }
 
-        for (let i = 0; i < line.nodeIds.length - 1; i++) {
+        const segCount = getLineSegmentCount(line);
+        for (let i = 0; i < segCount; i++) {
             if (draggingThisLine && state.drag.mode === 'reroute_mid' && state.drag.insertIndex === i + 1) {
                 continue;
             }
 
-            const n1 = state.nodes.find(n => n.id === line.nodeIds[i]);
-            const n2 = state.nodes.find(n => n.id === line.nodeIds[i + 1]);
+            const [id1, id2] = getLineSegmentNodeIds(line, i);
+            const n1 = state.nodes.find(n => n.id === id1);
+            const n2 = state.nodes.find(n => n.id === id2);
             if (!n1 || !n2) continue;
 
             const laneOffset = getSegmentParallelOffset(line.id, n1.id, n2.id);
@@ -287,11 +339,11 @@ function renderGame() {
             const c1 = getConnectorPoint(n1, n2, laneOffset);
             const c2 = getConnectorPoint(n2, n1, -laneOffset);
             if (c1) {
-                const hov1 = state.hover.connector && state.hover.connector.line.id === line.id && state.hover.connector.node.id === n1.id;
+                const hov1 = state.hover.connector && state.hover.connector.line.id === line.id && state.hover.connector.node.id === n1.id && state.hover.connector.segIndex === i;
                 drawConnectorPlug(ctx, c1.x, c1.y, line.color, hov1);
             }
             if (c2) {
-                const hov2 = state.hover.connector && state.hover.connector.line.id === line.id && state.hover.connector.node.id === n2.id;
+                const hov2 = state.hover.connector && state.hover.connector.line.id === line.id && state.hover.connector.node.id === n2.id && state.hover.connector.segIndex === i;
                 drawConnectorPlug(ctx, c2.x, c2.y, line.color, hov2);
             }
         }
@@ -325,13 +377,24 @@ function renderGame() {
         }
 
         if (snapNode) {
+            const willCloseLoop = !line.isLoop && line.nodeIds.length >= 3 &&
+                (snapNode.id === line.nodeIds[0] || snapNode.id === line.nodeIds[line.nodeIds.length - 1]);
+
             ctx.beginPath();
             ctx.arc(snapNode.x, snapNode.y, snapNode.radius + 9, 0, Math.PI * 2);
             ctx.strokeStyle = line.color;
             ctx.lineWidth = 3.5;
             ctx.stroke();
 
-            if (state.drag.isTouch) {
+            if (willCloseLoop) {
+                ctx.beginPath();
+                ctx.arc(snapNode.x, snapNode.y, snapNode.radius + 15, 0, Math.PI * 2);
+                ctx.strokeStyle = line.color;
+                ctx.setLineDash([5, 4]);
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+                ctx.setLineDash([]);
+            } else if (state.drag.isTouch) {
                 ctx.beginPath();
                 ctx.arc(snapNode.x, snapNode.y, snapNode.radius + 15, 0, Math.PI * 2);
                 ctx.strokeStyle = line.color;
