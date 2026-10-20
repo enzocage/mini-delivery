@@ -1,0 +1,4115 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MINI DELIVERY — Urbane Logistik</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-land: #F4F1EA;
+            --bg-water: #BCE0FD;
+            --bg-park: #E2EED6;
+            --text-main: #23272E;
+            --text-muted: #6E7685;
+            --panel-bg: rgba(255, 255, 255, 0.88);
+            --panel-border: rgba(35, 39, 46, 0.08);
+            --token-bg: #FFFFFF;
+            --token-shadow: 0 6px 18px -3px rgba(20, 24, 32, 0.14), 0 2px 5px -1px rgba(20, 24, 32, 0.07);
+        }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-land);
+            color: var(--text-main);
+            transition: background-color 0.8s cubic-bezier(0.22, 1, 0.36, 1), color 0.5s ease;
+        }
+        .font-mono-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-variant-numeric: tabular-nums;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: default;
+            touch-action: none;
+        }
+        canvas.hover-interactive {
+            cursor: pointer;
+        }
+        canvas.dragging-active {
+            cursor: grabbing;
+        }
+
+        /* Dinosaur Polo Club Minimalist Floating Surfaces */
+        .dpc-pill {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1.5px solid var(--panel-border);
+            box-shadow: var(--token-shadow);
+            transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .dpc-icon-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 9999px;
+            background: var(--panel-bg);
+            border: 1.5px solid var(--panel-border);
+            box-shadow: var(--token-shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease, background-color 0.25s ease;
+        }
+        .dpc-icon-btn:hover {
+            transform: scale(1.12);
+        }
+        .dpc-icon-btn:active {
+            transform: scale(0.92);
+        }
+
+        /* Tactile Circular Resource Tokens (Bottom Dock like Mini Metro / Mini Motorways) */
+        .dpc-token {
+            position: relative;
+            width: 50px;
+            height: 50px;
+            border-radius: 9999px;
+            background: var(--token-bg);
+            border: 2px solid var(--panel-border);
+            box-shadow: var(--token-shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                        box-shadow 0.25s ease,
+                        border-color 0.25s ease,
+                        width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                        margin 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .dpc-token:hover:not(.token-depleted) {
+            transform: translateY(-6px) scale(1.1);
+        }
+        .dpc-token:active:not(.token-depleted) {
+            cursor: grabbing;
+            transform: translateY(-2px) scale(0.95);
+        }
+        .dpc-token.active-tool {
+            transform: translateY(-9px) scale(1.14);
+            box-shadow: 0 14px 28px -4px rgba(20, 24, 32, 0.24);
+        }
+        .dpc-token.token-depleted {
+            opacity: 0.32;
+            transform: scale(0.86);
+            cursor: default;
+        }
+        .dpc-token.token-locked {
+            width: 0 !important;
+            height: 0 !important;
+            opacity: 0 !important;
+            margin: 0 !important;
+            border-width: 0 !important;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .token-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 5px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Line Color Pills (Mini Metro style) */
+        .line-token {
+            position: relative;
+            width: 34px;
+            height: 34px;
+            border-radius: 9999px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
+            transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        opacity 0.3s ease,
+                        box-shadow 0.25s ease;
+        }
+        .line-token:hover {
+            transform: translateY(-4px) scale(1.16);
+        }
+        .line-token.selected {
+            transform: translateY(-5px) scale(1.24);
+            box-shadow: 0 0 0 3px var(--bg-land), 0 0 0 5.5px currentColor, 0 8px 16px rgba(0,0,0,0.18);
+        }
+        .line-token.unused {
+            width: 24px;
+            height: 24px;
+            opacity: 0.55;
+        }
+        .line-token.unused.selected {
+            width: 32px;
+            height: 32px;
+            opacity: 1;
+        }
+
+        /* Score Pop Animation */
+        @keyframes score-bump {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.22); }
+            100% { transform: scale(1); }
+        }
+        .score-pop {
+            animation: score-bump 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Weekly Upgrade Circular Card Pop (Mini Motorways Style) */
+        @keyframes upgrade-bounce-in {
+            0% { opacity: 0; transform: translateY(36px) scale(0.82); }
+            70% { opacity: 1; transform: translateY(-4px) scale(1.03); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .upgrade-card-anim {
+            animation: upgrade-bounce-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(120, 125, 135, 0.28);
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="relative select-none overflow-hidden">
+
+    <!-- MAIN GAME CANVAS -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- MINIMALIST TOP-LEFT BAR: CITY WATERMARK & SUBTLE UTILITY ICONS -->
+    <div class="fixed top-4 left-4 z-20 flex items-center gap-2 pointer-events-none">
+        <button id="btnOpenCityModal" class="dpc-pill pointer-events-auto rounded-full pl-4 pr-3.5 py-2 flex items-center gap-2.5 group hover:scale-105 active:scale-95">
+            <span class="font-extrabold text-sm sm:text-base tracking-tight" id="uiCityName">Berlin</span>
+            <span class="text-[11px] opacity-50 font-semibold hidden sm:inline" id="uiCityRiver">Spree</span>
+            <svg class="w-3.5 h-3.5 opacity-55 group-hover:translate-y-0.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+
+        <button id="btnToggleTheme" title="Tag / Nacht Modus" class="dpc-icon-btn pointer-events-auto opacity-80 hover:opacity-100">
+            <svg id="iconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            <svg id="iconMoon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+
+        <button id="btnToggleSound" title="Audio Synthesizer An/Aus" class="dpc-icon-btn pointer-events-auto opacity-80 hover:opacity-100">
+            <svg id="iconSoundOn" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+            <svg id="iconSoundOff" class="w-4 h-4 hidden text-rose-500" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        </button>
+
+        <button id="btnOpenHelp" title="Logistik-Guide" class="dpc-icon-btn pointer-events-auto opacity-80 hover:opacity-100 font-extrabold text-xs">
+            ?
+        </button>
+    </div>
+
+    <!-- ICONIC MINI METRO / MINI MOTORWAYS TOP-RIGHT HUD: SCORE, DAY & ANALOG CLOCK + SPEED -->
+    <div class="fixed top-4 right-4 z-20 flex items-center gap-3 pointer-events-none">
+        <!-- Minimalist Score Counter (Top Right like Mini Metro/Motorways) -->
+        <div class="dpc-pill pointer-events-auto rounded-full px-4 py-1.5 flex items-center gap-3">
+            <div class="flex items-center gap-1.5" title="Ausgelieferte Pakete">
+                <svg class="w-4 h-4 opacity-55" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5z"/></svg>
+                <span id="uiScore" class="font-mono-num font-extrabold text-xl sm:text-2xl tracking-tight leading-none">0</span>
+            </div>
+
+            <div class="h-5 w-px bg-current opacity-15"></div>
+
+            <!-- Day Label + Analog Clock -->
+            <div class="flex items-center gap-2.5">
+                <span id="uiDayName" class="font-extrabold text-xs sm:text-sm uppercase tracking-wider min-w-[32px] text-right">MO</span>
+                <button id="btnClockTogglePause" title="Klicken für Pause / Weiter (Leertaste)" class="relative w-10 h-10 rounded-full flex items-center justify-center group focus:outline-none">
+                    <!-- Outer Week Progress SVG Ring -->
+                    <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 40 40">
+                        <circle cx="20" cy="20" r="17.5" fill="none" stroke="currentColor" stroke-opacity="0.12" stroke-width="2.5"/>
+                        <circle id="uiWeekArc" cx="20" cy="20" r="17.5" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-dasharray="110" stroke-dashoffset="100" stroke-linecap="round"/>
+                    </svg>
+                    <!-- Inner Clock Face -->
+                    <div class="relative w-7 h-7 rounded-full border-2 border-current flex items-center justify-center transition-transform group-hover:scale-105">
+                        <div id="clockHandHour" class="absolute w-[2px] h-2 bg-current origin-bottom rounded-full" style="bottom: 50%; transform: rotate(0deg);"></div>
+                        <div id="clockHandMin" class="absolute w-[1.5px] h-2.5 bg-amber-500 origin-bottom rounded-full" style="bottom: 50%; transform: rotate(0deg);"></div>
+                        <div class="w-1.5 h-1.5 rounded-full bg-current z-10"></div>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Speed Controls (Pause / 1x / 2x / 3x) -->
+            <div class="flex items-center gap-0.5 bg-black/5 dark:bg-white/10 p-1 rounded-full">
+                <button data-speed="0" class="speed-btn w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all" title="Pause (Leertaste)">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+                </button>
+                <button data-speed="1" class="speed-btn w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all bg-amber-500 text-white shadow-sm" title="Normal (1×)">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><polygon points="6,4 20,12 6,20"/></svg>
+                </button>
+                <button data-speed="2" class="speed-btn w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all" title="Schnell (2×)">
+                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><polygon points="3,5 12,12 3,19"/><polygon points="12,5 21,12 12,19"/></svg>
+                </button>
+                <button data-speed="3" class="speed-btn w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-extrabold transition-all" title="Turbo (3×)">3×</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUBTLE FLOATING TUTORIAL / CONTEXTUAL WHISPER (fades out automatically once learned) -->
+    <div id="uiHintBanner" class="fixed top-20 left-1/2 -translate-x-1/2 z-10 pointer-events-none transition-all duration-500 opacity-90">
+        <div class="dpc-pill rounded-full px-4 py-1.5 text-xs font-bold flex items-center gap-2">
+            <span id="uiHintDot" class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+            <span id="uiHintText">Ziehe eine Linie vom Hauptdepot zur Kundenstation</span>
+        </div>
+    </div>
+
+    <!-- MINIMALIST FLOATING NODE POPOVER (Only when clicking a Depot/Hub) -->
+    <div id="nodeInspector" class="fixed left-4 top-20 z-20 w-64 dpc-pill rounded-3xl p-4 hidden pointer-events-auto">
+        <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2.5">
+                <div id="inspBadge" class="w-7 h-7 rounded-full bg-amber-500 text-white flex items-center justify-center font-extrabold text-xs">HQ</div>
+                <div>
+                    <div id="inspTitle" class="font-extrabold text-xs leading-none">Hauptdepot</div>
+                    <div id="inspSubtitle" class="text-[10px] opacity-60 mt-0.5">0 / 40 Pakete</div>
+                </div>
+            </div>
+            <button id="btnCloseInspector" class="w-6 h-6 rounded-full hover:bg-black/10 flex items-center justify-center text-xs font-bold">✕</button>
+        </div>
+        <div id="inspBody" class="space-y-1.5 text-[11px]"></div>
+        <div id="inspActions" class="mt-3 pt-2 border-t border-black/10 dark:border-white/10 flex items-center justify-between gap-2">
+            <button id="btnInspAddDrone" class="flex-1 py-1.5 px-2.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-600 dark:text-cyan-300 font-extrabold text-[11px] transition-transform active:scale-95">+ Drohne</button>
+            <button id="btnInspRemoveNode" class="py-1.5 px-3 rounded-full bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-300 font-extrabold text-[11px] transition-transform active:scale-95">Abbauen</button>
+        </div>
+    </div>
+
+    <!-- AUTHENTIC MINI METRO / MINI MOTORWAYS BOTTOM DOCK: PURE TACTILE CIRCULAR TOKENS -->
+    <footer class="fixed bottom-4 left-0 right-0 z-20 pointer-events-none flex flex-col items-center gap-3">
+        
+        <!-- Row 1: Unlocked Logistics Lines (Circular Color Pills) -->
+        <div class="pointer-events-auto flex items-center gap-2.5 px-3 py-1.5 rounded-full dpc-pill" id="lineSelectorBar">
+            <div id="linePillsContainer" class="flex items-center gap-2"></div>
+            <button id="btnClearSelectedLine" title="Ausgewählte Linie abbauen (Fahrzeuge kehren ins Inventar zurück)" class="w-6 h-6 rounded-full bg-rose-500/15 text-rose-500 hover:bg-rose-500 hover:text-white flex items-center justify-center text-xs font-extrabold transition-all ml-1">
+                ✕
+            </button>
+        </div>
+
+        <!-- Row 2: Physical Resource Tokens (Drag onto Map/Line OR Click to Place) -->
+        <div class="pointer-events-auto flex items-center justify-center gap-2.5 sm:gap-3.5 px-2">
+            
+            <!-- Cyberbike Token (S & L on Lines) -->
+            <button data-tool="bike" title="Cyberbike (2×S oder 1×L): Auf eine Linie ziehen oder klicken!" class="dpc-token dock-item group">
+                <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                    <rect x="7" y="3" width="10" height="18" rx="5" fill="currentColor" fill-opacity="0.22"/>
+                    <path d="M9 8h6M10 15h4" stroke-linecap="round"/>
+                </svg>
+                <span id="badgeBike" class="token-badge bg-emerald-600 text-white font-mono-num">1</span>
+            </button>
+
+            <!-- Cybercar Token (XL, L & S on Lines) -->
+            <button data-tool="car" title="Cybercar (1×XL, 2×L oder 4×S): Auf eine Linie ziehen oder klicken!" class="dpc-token dock-item group">
+                <svg class="w-6 h-6 text-violet-600 dark:text-violet-400 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <rect x="5" y="2" width="14" height="20" rx="4" fill="currentColor" fill-opacity="0.22"/>
+                    <line x1="8" y1="6" x2="16" y2="6" stroke-width="2.5" stroke-linecap="round"/>
+                    <rect x="8" y="10" width="8" height="8" rx="1.5"/>
+                </svg>
+                <span id="badgeCar" class="token-badge bg-violet-600 text-white font-mono-num">0</span>
+            </button>
+
+            <!-- Flugdrohne Token (Direct Air S-Delivery from Depots) -->
+            <button data-tool="drone" title="Flugdrohne (Luftlinie 1×S): Auf ein Depot oder Zwischenlager ziehen!" class="dpc-token dock-item group">
+                <svg class="w-6 h-6 text-cyan-600 dark:text-cyan-400 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+                    <circle cx="5" cy="5" r="2.5" fill="currentColor"/><circle cx="19" cy="5" r="2.5" fill="currentColor"/>
+                    <circle cx="5" cy="19" r="2.5" fill="currentColor"/><circle cx="19" cy="19" r="2.5" fill="currentColor"/>
+                    <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                </svg>
+                <span id="badgeDrone" class="token-badge bg-cyan-600 text-white font-mono-num">1</span>
+            </button>
+
+            <!-- S-Zwischenlager Token -->
+            <button data-tool="depot_S" title="S-Zwischenlager (Mikro-Hub für 6× S-Pakete): Auf freies Festland ziehen!" class="dpc-token dock-item group">
+                <div class="w-7 h-7 rounded-full border-[2.5px] border-sky-500 bg-sky-500/15 flex items-center justify-center font-extrabold text-xs text-sky-600 dark:text-sky-300">
+                    S
+                </div>
+                <span id="badgeDepotS" class="token-badge bg-sky-500 text-white font-mono-num">0</span>
+            </button>
+
+            <!-- L-Zwischenlager Token -->
+            <button data-tool="depot_L" title="L-Zwischenlager (Regional-Hub für 12× S/L-Pakete): Auf freies Festland ziehen!" class="dpc-token dock-item group">
+                <div class="w-7 h-7 rounded-lg border-[2.5px] border-amber-500 bg-amber-500/15 flex items-center justify-center font-extrabold text-xs text-amber-600 dark:text-amber-300">
+                    L
+                </div>
+                <span id="badgeDepotL" class="token-badge bg-amber-500 text-white font-mono-num">0</span>
+            </button>
+
+            <!-- XL-Zwischenlager Token -->
+            <button data-tool="depot_XL" title="XL-Mega-Hub (Speichert 24× S/L/XL-Pakete): Auf freies Festland ziehen!" class="dpc-token dock-item group">
+                <div class="w-7 h-7 rounded-md rotate-45 border-[2.5px] border-rose-500 bg-rose-500/15 flex items-center justify-center font-extrabold text-[10px] text-rose-600 dark:text-rose-300">
+                    <span class="-rotate-45">XL</span>
+                </div>
+                <span id="badgeDepotXL" class="token-badge bg-rose-500 text-white font-mono-num">0</span>
+            </button>
+
+            <!-- Bridges Passive Token (Auto-used when crossing rivers) -->
+            <div id="tokenBridgesWrap" class="dpc-token cursor-default" title="Brücken: Werden automatisch verbraucht, wenn eine Linie Flüsse überquert.">
+                <svg class="w-5 h-5 text-slate-600 dark:text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M2 15h20M4 15c0-4 3.5-7 8-7s8 3 8 7M7 15v4M17 15v4"/>
+                </svg>
+                <span id="badgeBridges" class="token-badge bg-slate-700 text-white font-mono-num">1</span>
+            </div>
+
+        </div>
+    </footer>
+
+    <!-- MODAL 1: 30 REAL CITIES SELECTOR (Mini Metro Map Poster Style) -->
+    <div id="cityModal" class="fixed inset-0 z-40 bg-black/45 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="dpc-pill rounded-[32px] max-w-5xl w-full max-h-[86vh] flex flex-col overflow-hidden shadow-2xl">
+            <div class="p-6 border-b border-black/10 dark:border-white/10 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <div class="text-[11px] font-extrabold uppercase tracking-widest text-amber-500">30 Metropolen</div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Wähle deine Stadt</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input id="citySearchInput" type="text" placeholder="Stadt oder Fluss suchen..." class="px-4 py-2 rounded-full bg-black/5 dark:bg-white/10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <button id="btnCloseCityModal" class="dpc-icon-btn font-bold">✕</button>
+                </div>
+            </div>
+            <div id="cityGridContainer" class="p-6 overflow-y-auto custom-scroll grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: WEEKLY UPGRADE (Mini Motorways Bouncing Circular Icons Style) -->
+    <div id="upgradeModal" class="fixed inset-0 z-40 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="max-w-xl w-full text-center">
+            <div class="inline-block px-4 py-1 rounded-full bg-amber-500 text-white font-extrabold text-xs uppercase tracking-widest mb-2 shadow">
+                <span id="upgradeWeekTitle">Woche 2</span>
+            </div>
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-1 drop-shadow">Neue Ressourcen</h2>
+            <p class="text-white/80 text-sm mb-7">Wähle eine Lieferung für dein wachsendes Logistiknetz</p>
+            <div id="upgradeCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-5"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: GAME OVER / ENDLESS MODE -->
+    <div id="gameOverModal" class="fixed inset-0 z-40 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="dpc-pill rounded-[32px] max-w-md w-full p-7 text-center shadow-2xl upgrade-card-anim">
+            <div class="w-16 h-16 rounded-full bg-rose-500/15 text-rose-500 flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            </div>
+            <h2 class="text-2xl font-extrabold tracking-tight mb-1" id="goTitle">Station überlastet</h2>
+            <p class="text-xs opacity-70 mb-6" id="goSubtitle">Ein Empfänger hat zu lange auf seine Lieferung gewartet.</p>
+
+            <div class="grid grid-cols-3 gap-3 mb-6 text-center">
+                <div class="p-3 rounded-2xl bg-black/5 dark:bg-white/5">
+                    <div class="text-[10px] uppercase font-bold opacity-55">Geliefert</div>
+                    <div class="font-mono-num text-2xl font-extrabold text-amber-500" id="goScore">0</div>
+                </div>
+                <div class="p-3 rounded-2xl bg-black/5 dark:bg-white/5">
+                    <div class="text-[10px] uppercase font-bold opacity-55">Tage</div>
+                    <div class="font-mono-num text-2xl font-extrabold" id="goDays">0</div>
+                </div>
+                <div class="p-3 rounded-2xl bg-black/5 dark:bg-white/5">
+                    <div class="text-[10px] uppercase font-bold opacity-55">Hubs</div>
+                    <div class="font-mono-num text-2xl font-extrabold text-sky-500" id="goDepots">0</div>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button id="btnContinueEndless" class="flex-1 py-3 px-4 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs uppercase tracking-wider shadow-lg transition-transform active:scale-95">
+                    Endlos-Modus weiterspielen
+                </button>
+                <button id="btnRestartCity" class="py-3 px-5 rounded-full bg-black/10 dark:bg-white/10 font-extrabold text-xs uppercase tracking-wider transition-transform active:scale-95">
+                    Neustart
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: MINIMALIST VISUAL GUIDE -->
+    <div id="helpModal" class="fixed inset-0 z-40 bg-black/45 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="dpc-pill rounded-[32px] max-w-2xl w-full max-h-[86vh] overflow-y-auto custom-scroll p-6 sm:p-8 shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <div>
+                    <div class="text-[11px] font-extrabold uppercase tracking-widest text-amber-500">Dinosaur Polo Club Stil</div>
+                    <h2 class="text-2xl font-extrabold tracking-tight">Mini Delivery — Kurzguide</h2>
+                </div>
+                <button id="btnCloseHelp" class="dpc-icon-btn font-bold">✕</button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-6">
+                <div class="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/20">
+                    <div class="flex items-center gap-2 font-extrabold text-xs text-sky-600 dark:text-sky-300 mb-1.5">
+                        <span class="w-3.5 h-3.5 rounded-full bg-sky-500 inline-block"></span> Paket S (Kreis)
+                    </div>
+                    <p class="text-[11px] opacity-80 leading-relaxed">Leichtpaket. Wird von <strong>Flugdrohnen (1×)</strong> über Wasser geflogen oder von <strong>Cyberbikes (2×)</strong> & <strong>Cybercars (4×)</strong> auf Linien gefahren.</p>
+                </div>
+                <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                    <div class="flex items-center gap-2 font-extrabold text-xs text-amber-600 dark:text-amber-300 mb-1.5">
+                        <span class="w-3.5 h-3.5 rounded-[4px] bg-amber-500 inline-block"></span> Paket L (Quadrat)
+                    </div>
+                    <p class="text-[11px] opacity-80 leading-relaxed">Erscheint ab Mitte Woche 1. Zu schwer für Drohnen! Braucht eine Linie mit <strong>Cyberbike (1×)</strong> oder <strong>Cybercar (2×)</strong>.</p>
+                </div>
+                <div class="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                    <div class="flex items-center gap-2 font-extrabold text-xs text-rose-600 dark:text-rose-300 mb-1.5">
+                        <span class="w-3.5 h-3.5 rotate-45 rounded-[2px] bg-rose-500 inline-block"></span> Paket XL (Raute)
+                    </div>
+                    <p class="text-[11px] opacity-80 leading-relaxed">Schwerlast ab Woche 2! Kann <strong>nur vom Cybercar (1×)</strong> über Linien transportiert werden.</p>
+                </div>
+            </div>
+
+            <div class="space-y-2 text-xs leading-relaxed mb-6 opacity-85">
+                <p>• <strong>Linien ziehen & T-Endstücke:</strong> Ziehe direkt von Station zu Station. Greife die <strong>T-Endstücke</strong> einer Linie, um sie zu verlängern oder zu kürzen.</p>
+                <p>• <strong>Drag & Drop aus dem Dock:</strong> Ziehe <strong>Bikes, Cars, Drohnen und S/L/XL-Zwischenlager</strong> direkt aus der unteren Leiste auf Linien, Depots oder die Karte!</p>
+                <p>• <strong>Automatischer Kamera-Zoom:</strong> Das Spiel startet nah im Zentrum und zoomt mit deiner wachsenden Metropole automatisch heraus.</p>
+            </div>
+
+            <div class="flex justify-end">
+                <button id="btnStartFromHelp" class="px-6 py-2.5 rounded-full bg-amber-500 text-white font-extrabold text-xs uppercase tracking-wider shadow-lg transition-transform active:scale-95">
+                    Weiterspielen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    /***************************************************************************
+     * 1. 30 REAL WORLD CITIES WITH AUTHENTIC NORMALIZED GEODATA POLYGONS
+     * Coordinate space: [0..1000] x [0..650]. Water polygons represent actual
+     * rivers, bays, canals, and coastlines for each of the 30 cities.
+     ***************************************************************************/
+    const CITIES = [
+        {
+            id: 'berlin', name: 'Berlin', country: 'Deutschland', coords: '52.52°N 13.40°E',
+            riverName: 'Spree & Landwehrkanal',
+            day: { land: '#F4F1EA', water: '#BCE0FD', park: '#E2EED6' },
+            night: { land: '#141820', water: '#0B2239', park: '#18241E' },
+            rivers: [
+                // Spree winding West to East through Mitte
+                { width: 36, pts: [[-40, 260], [130, 275], [260, 230], [390, 250], [490, 295], [590, 285], [700, 340], [840, 395], [1040, 440]] },
+                // Landwehrkanal southern loop
+                { width: 18, pts: [[260, 230], [310, 380], [460, 425], [630, 410], [700, 340]] },
+                // Havel / Spree North branch
+                { width: 28, pts: [[130, 275], [155, 110], [180, -30]] }
+            ],
+            waterPolys: [
+                // Müggelsee / Rummelsburger See hint
+                [[760, 360], [835, 340], [860, 390], [790, 415]]
+            ]
+        },
+        {
+            id: 'muenchen', name: 'München', country: 'Deutschland', coords: '48.13°N 11.58°E',
+            riverName: 'Isar & Eisbach',
+            day: { land: '#F6F3EC', water: '#B4E4E8', park: '#DFEFD5' },
+            night: { land: '#151922', water: '#092B32', park: '#17251E' },
+            rivers: [
+                // Isar flowing South-West to North-East through Munich + Museumsinsel split
+                { width: 42, pts: [[270, 680], [340, 540], [430, 420], [500, 320], [565, 210], [645, 95], [730, -30]] },
+                { width: 20, pts: [[415, 440], [475, 390], [525, 295], [565, 210]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'hamburg', name: 'Hamburg', country: 'Deutschland', coords: '53.55°N 9.99°E',
+            riverName: 'Norderelbe, Süderelbe & Alster',
+            day: { land: '#F2EFE9', water: '#B5D8F8', park: '#E1ECD6' },
+            night: { land: '#12161F', water: '#0A1F38', park: '#16211C' },
+            rivers: [
+                // Norderelbe
+                { width: 58, pts: [[-40, 360], [220, 380], [490, 395], [730, 440], [1040, 510]] },
+                // Süderelbe splitting around Wilhelmsburg
+                { width: 46, pts: [[160, 375], [310, 515], [550, 535], [730, 440]] },
+                // Binnen- & Außenalster flowing north from Elbe
+                { width: 22, pts: [[490, 395], [510, 290]] }
+            ],
+            waterPolys: [
+                // Außenalster & Binnenalster lake polygon
+                [[485, 295], [465, 240], [510, 125], [585, 90], [610, 165], [555, 265], [525, 305]]
+            ]
+        },
+        {
+            id: 'wien', name: 'Wien', country: 'Österreich', coords: '48.20°N 16.37°E',
+            riverName: 'Donau, Neue Donau & Donaukanal',
+            day: { land: '#F7F2EB', water: '#B8DCF8', park: '#E3EFD7' },
+            night: { land: '#161821', water: '#0C223B', park: '#19231D' },
+            rivers: [
+                // Hauptdonau diagonal NW to SE
+                { width: 54, pts: [[240, -30], [395, 130], [565, 285], [745, 445], [960, 620]] },
+                // Neue Donau parallel (forming Donauinsel)
+                { width: 28, pts: [[290, -30], [440, 105], [610, 260], [790, 420], [995, 595]] },
+                // Donaukanal curving through central Vienna
+                { width: 22, pts: [[395, 130], [385, 275], [465, 385], [630, 460], [745, 445]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'zuerich', name: 'Zürich', country: 'Schweiz', coords: '47.37°N 8.54°E',
+            riverName: 'Zürichsee, Limmat & Sihl',
+            day: { land: '#F3F2EC', water: '#B0E0F6', park: '#DFEDD6' },
+            night: { land: '#131720', water: '#092438', park: '#16231C' },
+            rivers: [
+                // Limmat flowing NW from Lake Zurich
+                { width: 32, pts: [[535, 355], [460, 250], [340, 155], [160, 75], [-30, 25]] },
+                // Sihl joining Limmat at Platzspitz
+                { width: 20, pts: [[380, 670], [415, 490], [435, 345], [460, 250]] }
+            ],
+            waterPolys: [
+                // Zürichsee in the South-East
+                [[500, 340], [585, 340], [710, 460], [890, 580], [920, 680], [530, 680], [495, 490]]
+            ]
+        },
+        {
+            id: 'koeln', name: 'Köln', country: 'Deutschland', coords: '50.93°N 6.96°E',
+            riverName: 'Rheinbogen',
+            day: { land: '#F5F1E9', water: '#B8DAF5', park: '#E3EED8' },
+            night: { land: '#151820', water: '#0B2136', park: '#18231D' },
+            rivers: [
+                // Mighty Rhine S-curve through Cologne
+                { width: 68, pts: [[610, 680], [585, 535], [475, 415], [455, 290], [525, 175], [490, 50], [430, -30]] }
+            ],
+            waterPolys: [
+                // Deutzer Hafen / Rheinauhafen indent
+                [[505, 330], [555, 345], [545, 410], [495, 395]]
+            ]
+        },
+        {
+            id: 'frankfurt', name: 'Frankfurt am Main', country: 'Deutschland', coords: '50.11°N 8.68°E',
+            riverName: 'Main & Osthafen',
+            day: { land: '#F4F0E8', water: '#BBDDF6', park: '#E1EDD5' },
+            night: { land: '#14171F', water: '#0C2135', park: '#17221B' },
+            rivers: [
+                // Main River sweeping East-West
+                { width: 52, pts: [[-40, 440], [180, 410], [360, 335], [535, 340], [715, 385], [885, 340], [1040, 325]] },
+                // Nidda in NW
+                { width: 18, pts: [[70, -20], [130, 140], [160, 280], [180, 410]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'paris', name: 'Paris', country: 'Frankreich', coords: '48.85°N 2.35°E',
+            riverName: 'Seine, Île de la Cité & Canal St-Martin',
+            day: { land: '#F7F3EB', water: '#B9E1F9', park: '#E5F0DA' },
+            night: { land: '#161822', water: '#0B233A', park: '#19241E' },
+            rivers: [
+                // La Seine iconic arc through Paris
+                { width: 48, pts: [[890, 590], [720, 455], [575, 365], [440, 320], [305, 355], [185, 480], [120, 620]] },
+                // Split around Île de la Cité & Île Saint-Louis
+                { width: 26, pts: [[625, 395], [555, 325], [485, 305], [440, 320]] },
+                // Canal Saint-Martin
+                { width: 16, pts: [[620, 390], [650, 230], [735, 95], [850, -20]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'london', name: 'London', country: 'Großbritannien', coords: '51.50°N 0.12°W',
+            riverName: 'River Thames & Isle of Dogs',
+            day: { land: '#F3EFE6', water: '#B4D9F4', park: '#DFECD4' },
+            night: { land: '#13161E', water: '#0A1F35', park: '#17211B' },
+            rivers: [
+                // River Thames iconic meanders + Isle of Dogs horseshoe loop
+                { width: 54, pts: [[-40, 450], [130, 435], [250, 355], [355, 285], [485, 290], [575, 345], [635, 270], [710, 265], [750, 395], [835, 405], [910, 305], [1040, 315]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'amsterdam', name: 'Amsterdam', country: 'Niederlande', coords: '52.36°N 4.90°E',
+            riverName: 'IJ, Amstel & Grachtenring',
+            day: { land: '#F6F2E9', water: '#B6DFF8', park: '#E3EFD7' },
+            night: { land: '#141720', water: '#0A2238', park: '#18231D' },
+            rivers: [
+                // Het IJ wide waterway across North Amsterdam
+                { width: 78, pts: [[-40, 145], [280, 175], [570, 215], [840, 195], [1040, 165]] },
+                // Amstel flowing South
+                { width: 32, pts: [[515, 215], [510, 390], [525, 540], [515, 680]] },
+                // Concentric Grachtengordel horseshoe 1
+                { width: 15, pts: [[375, 200], [335, 330], [410, 430], [595, 430], [665, 330], [625, 215]] },
+                // Concentric Grachtengordel horseshoe 2
+                { width: 15, pts: [[295, 190], [255, 365], [365, 505], [635, 505], [735, 365], [690, 215]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'venedig', name: 'Venedig', country: 'Italien', coords: '45.44°N 12.31°E',
+            riverName: 'Canal Grande & Lagune von Venedig',
+            day: { land: '#F8F3EA', water: '#A8E2EB', park: '#E5F1DA' },
+            night: { land: '#171923', water: '#082934', park: '#19261E' },
+            rivers: [
+                // Canal Grande S-hook through the historic island cluster
+                { width: 34, pts: [[275, 230], [420, 205], [535, 265], [470, 360], [565, 425], [700, 410]] },
+                // Canale della Giudecca wide channel south
+                { width: 65, pts: [[160, 460], [440, 485], [720, 455], [960, 420]] }
+            ],
+            waterPolys: [
+                // Surrounding Venetian Lagoon margins
+                [[-30, -30], [1030, -30], [1030, 95], [680, 120], [240, 105], [-30, 160]],
+                [[-30, 565], [390, 585], [820, 550], [1030, 535], [1030, 680], [-30, 680]]
+            ]
+        },
+        {
+            id: 'barcelona', name: 'Barcelona', country: 'Spanien', coords: '41.38°N 2.17°E',
+            riverName: 'Mittelmeer-Küste, Port Vell & Besòs',
+            day: { land: '#F8F2E8', water: '#AEE0F9', park: '#E6F0D8' },
+            night: { land: '#171822', water: '#09243B', park: '#1A241E' },
+            rivers: [
+                // Riu Besòs NE
+                { width: 28, pts: [[740, -30], [790, 165], [855, 345]] },
+                // Riu Llobregat SW
+                { width: 32, pts: [[40, 320], [115, 475], [175, 595]] }
+            ],
+            waterPolys: [
+                // Mediterranean Sea diagonal SE coastline + Port Vell harbor
+                [[140, 680], [340, 540], [415, 495], [455, 530], [530, 475], [740, 385], [1030, 260], [1030, 680]]
+            ]
+        },
+        {
+            id: 'rom', name: 'Rom', country: 'Italien', coords: '41.90°N 12.49°E',
+            riverName: 'Tiber (Fiume Tevere) & Tiberinsel',
+            day: { land: '#F8F1E5', water: '#B8DDF4', park: '#E5EFD5' },
+            night: { land: '#181821', water: '#0B2235', park: '#1B241D' },
+            rivers: [
+                // Tiber winding North to South through Rome
+                { width: 44, pts: [[495, -30], [420, 115], [485, 225], [395, 305], [465, 410], [435, 525], [320, 680]] },
+                // Aniene tributary NE
+                { width: 22, pts: [[940, 60], [720, 120], [485, 165]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'lissabon', name: 'Lissabon', country: 'Portugal', coords: '38.72°N 9.13°W',
+            riverName: 'Tejo-Mündung (Mar da Palha)',
+            day: { land: '#F8F3E9', water: '#AADBF8', park: '#E5F0D8' },
+            night: { land: '#161822', water: '#08213A', park: '#18241D' },
+            rivers: [],
+            waterPolys: [
+                // Huge Tagus estuary separating Lisbon north bank from Almada south bank
+                [[-30, 480], [260, 445], [510, 410], [670, 305], [820, 165], [1030, 120], [1030, 520], [780, 545], [530, 560], [280, 565], [-30, 595]]
+            ]
+        },
+        {
+            id: 'prag', name: 'Prag', country: 'Tschechien', coords: '50.07°N 14.43°E',
+            riverName: 'Moldau (Vltava) & Holešovice-Schleife',
+            day: { land: '#F5F1E9', water: '#B7DCF6', park: '#E2EED6' },
+            night: { land: '#151821', water: '#0B2237', park: '#18231D' },
+            rivers: [
+                // Vltava flowing South to North with the signature Holešovice bend
+                { width: 48, pts: [[430, 680], [455, 515], [440, 365], [495, 250], [645, 235], [665, 145], [485, 115], [430, -30]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'stockholm', name: 'Stockholm', country: 'Schweden', coords: '59.32°N 18.06°E',
+            riverName: 'Mälaren, Riddarfjärden & Schären-Inseln',
+            day: { land: '#F3F1EB', water: '#AFCFF2', park: '#DEEBD5' },
+            night: { land: '#121620', water: '#091D35', park: '#16221C' },
+            rivers: [
+                // Central water channels around Gamla Stan, Kungsholmen & Södermalm
+                { width: 62, pts: [[-40, 355], [240, 340], [485, 345], [740, 355], [1040, 370]] },
+                { width: 42, pts: [[340, -30], [385, 175], [465, 345], [450, 510], [590, 680]] },
+                { width: 34, pts: [[645, 140], [610, 345], [670, 515]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'istanbul', name: 'Istanbul', country: 'Türkei', coords: '41.00°N 28.97°E',
+            riverName: 'Bosporus, Goldenes Horn & Marmarameer',
+            day: { land: '#F7F2E8', water: '#A9D9F6', park: '#E5EFD7' },
+            night: { land: '#161822', water: '#08223A', park: '#19241D' },
+            rivers: [
+                // Bosphorus Strait separating Europe and Asia
+                { width: 82, pts: [[640, -30], [585, 145], [535, 315], [495, 485]] },
+                // Golden Horn (Haliç) curving NW into European side
+                { width: 36, pts: [[510, 385], [355, 335], [225, 255], [135, 165]] }
+            ],
+            waterPolys: [
+                // Sea of Marmara in the South
+                [[-30, 525], [310, 485], [495, 455], [690, 510], [1030, 575], [1030, 680], [-30, 680]]
+            ]
+        },
+        {
+            id: 'kairo', name: 'Kairo', country: 'Ägypten', coords: '30.04°N 31.23°E',
+            riverName: 'Nil & Gezira / Zamalek-Insel',
+            day: { land: '#F9F1E2', water: '#B0DCF4', park: '#E4EED2' },
+            night: { land: '#19171E', water: '#0A2236', park: '#1A241B' },
+            rivers: [
+                // Great Nile flowing South to North
+                { width: 66, pts: [[485, 680], [495, 505], [475, 330], [485, 165], [440, -30]] },
+                // Branch around Zamalek (Gezira Island)
+                { width: 32, pts: [[485, 445], [405, 335], [420, 225], [485, 165]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'kapstadt', name: 'Kapstadt', country: 'Südafrika', coords: '33.92°S 18.42°E',
+            riverName: 'Tafelbucht (Table Bay) & Atlantik',
+            day: { land: '#F6F2E9', water: '#A6DCF6', park: '#E1EED5' },
+            night: { land: '#151821', water: '#082339', park: '#17241D' },
+            rivers: [
+                // Salt River / Black River canal
+                { width: 22, pts: [[560, 240], [610, 430], [645, 620]] }
+            ],
+            waterPolys: [
+                // Table Bay & Atlantic Ocean around Sea Point & Waterfront
+                [[-30, -30], [1030, -30], [1030, 140], [710, 185], [540, 265], [380, 230], [235, 315], [155, 520], [120, 680], [-30, 680]]
+            ]
+        },
+        {
+            id: 'dubai', name: 'Dubai', country: 'VAE', coords: '25.20°N 55.27°E',
+            riverName: 'Dubai Creek, Water Canal & Persischer Golf',
+            day: { land: '#FAF1E2', water: '#A2E3F4', park: '#E7F0D6' },
+            night: { land: '#191720', water: '#072738', park: '#1B251D' },
+            rivers: [
+                // Dubai Creek & Business Bay Canal loop
+                { width: 42, pts: [[690, 165], [760, 295], [685, 420], [475, 430], [345, 315], [275, 250]] }
+            ],
+            waterPolys: [
+                // Persian Gulf NW coastline
+                [[-30, -30], [1030, -30], [1030, 85], [690, 165], [345, 265], [-30, 390]]
+            ]
+        },
+        {
+            id: 'mumbai', name: 'Mumbai', country: 'Indien', coords: '19.07°N 72.87°E',
+            riverName: 'Arabisches Meer, Back Bay & Thane Creek',
+            day: { land: '#F7F1E6', water: '#AEE0F6', park: '#E3EED5' },
+            night: { land: '#161820', water: '#092338', park: '#18241C' },
+            rivers: [
+                // Mithi River separating North & South Mumbai
+                { width: 28, pts: [[265, 295], [470, 315], [685, 265]] }
+            ],
+            waterPolys: [
+                // Arabian Sea on West + Back Bay
+                [[-30, -30], [285, -30], [260, 295], [215, 470], [295, 520], [250, 610], [-30, 680]],
+                // Mumbai Harbour / Thane Creek on East
+                [[760, -30], [1030, -30], [1030, 680], [520, 680], [640, 480], [695, 255]]
+            ]
+        },
+        {
+            id: 'singapur', name: 'Singapur', country: 'Singapur', coords: '1.35°N 103.81°E',
+            riverName: 'Marina Bay, Singapore River & Kallang',
+            day: { land: '#F4F2EA', water: '#A7E2F4', park: '#DCEFD4' },
+            night: { land: '#131821', water: '#072638', park: '#16261E' },
+            rivers: [
+                // Singapore River
+                { width: 28, pts: [[235, 310], [385, 365], [515, 415]] },
+                // Kallang River
+                { width: 32, pts: [[615, 110], [600, 285], [565, 415]] }
+            ],
+            waterPolys: [
+                // Marina Bay & Singapore Strait South
+                [[-30, 525], [340, 485], [475, 405], [595, 405], [645, 475], [1030, 435], [1030, 680], [-30, 680]]
+            ]
+        },
+        {
+            id: 'hongkong', name: 'Hongkong', country: 'China', coords: '22.31°N 114.16°E',
+            riverName: 'Victoria Harbour (Kowloon & HK Island)',
+            day: { land: '#F5F1E8', water: '#A9DCF6', park: '#DFEFD5' },
+            night: { land: '#131722', water: '#07213A', park: '#16251E' },
+            rivers: [],
+            waterPolys: [
+                // Victoria Harbour channel between Kowloon Peninsula and Hong Kong Island
+                [[-30, 290], [285, 325], [440, 385], [595, 375], [785, 325], [1030, 355], [1030, 475], [760, 445], [565, 475], [360, 465], [140, 445], [-30, 460]]
+            ]
+        },
+        {
+            id: 'tokio', name: 'Tokio', country: 'Japan', coords: '35.67°N 139.65°E',
+            riverName: 'Sumida-Fluss, Arakawa & Bucht von Tokio',
+            day: { land: '#F5F2EC', water: '#B3DFF8', park: '#E2EFD8' },
+            night: { land: '#141721', water: '#0A2239', park: '#18241E' },
+            rivers: [
+                // Sumida River
+                { width: 40, pts: [[515, -30], [565, 145], [545, 305], [510, 455]] },
+                // Arakawa wide floodway East
+                { width: 62, pts: [[690, -30], [755, 175], [765, 345], [740, 475]] },
+                // Imperial Palace / Nihonbashi canal
+                { width: 20, pts: [[345, 295], [450, 315], [545, 305]] }
+            ],
+            waterPolys: [
+                // Tokyo Bay South-East
+                [[380, 680], [465, 455], [645, 475], [855, 445], [1030, 465], [1030, 680]]
+            ]
+        },
+        {
+            id: 'seoul', name: 'Seoul', country: 'Südkorea', coords: '37.56°N 126.97°E',
+            riverName: 'Han-Fluss (Hangang) & Yeouido-Insel',
+            day: { land: '#F4F1EA', water: '#B4DCF7', park: '#E1EED6' },
+            night: { land: '#141821', water: '#0A2138', park: '#17231D' },
+            rivers: [
+                // Mighty Han River sweeping across Seoul
+                { width: 76, pts: [[-40, 295], [195, 355], [415, 395], [645, 365], [840, 395], [1040, 345]] },
+                // Yeouido southern branch
+                { width: 26, pts: [[245, 365], [340, 445], [455, 430], [510, 385]] },
+                // Jungnangcheon North tributary
+                { width: 24, pts: [[645, -30], [635, 185], [645, 365]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'sydney', name: 'Sydney', country: 'Australien', coords: '33.86°S 151.20°E',
+            riverName: 'Port Jackson (Sydney Harbour) & Parramatta',
+            day: { land: '#F7F3EA', water: '#A6DFF8', park: '#E2F0D7' },
+            night: { land: '#151822', water: '#08233B', park: '#18241E' },
+            rivers: [
+                // Parramatta River & Port Jackson winding harbor
+                { width: 74, pts: [[-40, 355], [195, 365], [395, 335], [565, 375], [745, 315], [940, 285], [1040, 265]] },
+                // Middle Harbour North arm
+                { width: 38, pts: [[565, 115], [665, 215], [745, 315]] },
+                // Darling Harbour bay south
+                { width: 34, pts: [[475, 355], [485, 465]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'newyork', name: 'New York City', country: 'USA', coords: '40.71°N 74.00°W',
+            riverName: 'Manhattan, Hudson River & East River',
+            day: { land: '#F4F0E8', water: '#B1D9F6', park: '#E1EDD5' },
+            night: { land: '#131620', water: '#091F37', park: '#17221C' },
+            rivers: [
+                // Hudson River West of Manhattan
+                { width: 78, pts: [[365, -30], [335, 220], [295, 455], [265, 680]] },
+                // East River separating Manhattan from Brooklyn & Queens
+                { width: 54, pts: [[615, -30], [565, 185], [535, 365], [475, 495], [320, 565]] },
+                // Harlem River connecting Hudson and East River
+                { width: 22, pts: [[355, 85], [485, 115], [565, 185]] }
+            ],
+            waterPolys: [
+                // Upper New York Bay South
+                [[195, 515], [515, 525], [625, 680], [160, 680]]
+            ]
+        },
+        {
+            id: 'sanfrancisco', name: 'San Francisco', country: 'USA', coords: '37.77°N 122.41°W',
+            riverName: 'Golden Gate & San Francisco Bay',
+            day: { land: '#F6F2EA', water: '#ACD9F6', park: '#E2EFD6' },
+            night: { land: '#141721', water: '#082138', park: '#17231D' },
+            rivers: [],
+            waterPolys: [
+                // Golden Gate Strait & Central SF Bay separating SF Peninsula, Marin & Oakland
+                [[-30, -30], [235, -30], [265, 165], [445, 215], [615, 115], [725, 195], [755, 680], [515, 680], [495, 345], [275, 285], [-30, 315]]
+            ]
+        },
+        {
+            id: 'chicago', name: 'Chicago', country: 'USA', coords: '41.87°N 87.62°W',
+            riverName: 'Lake Michigan & Chicago River',
+            day: { land: '#F4F1EA', water: '#B2DCF8', park: '#E2EED6' },
+            night: { land: '#141820', water: '#0A2238', park: '#18231D' },
+            rivers: [
+                // Chicago River Y-junction: Main Stem, North Branch, South Branch
+                { width: 30, pts: [[695, 325], [475, 325]] },
+                { width: 26, pts: [[475, 325], [375, 145], [295, -30]] },
+                { width: 28, pts: [[475, 325], [435, 475], [245, 615], [-30, 665]] }
+            ],
+            waterPolys: [
+                // Lake Michigan along the eastern shoreline
+                [[655, -30], [1030, -30], [1030, 680], [785, 680], [715, 455], [685, 245]]
+            ]
+        },
+        {
+            id: 'riodejaneiro', name: 'Rio de Janeiro', country: 'Brasilien', coords: '22.90°S 43.17°W',
+            riverName: 'Guanabara-Bucht & Copacabana-Küste',
+            day: { land: '#F7F3EA', water: '#A6E0F6', park: '#DCF0D4' },
+            night: { land: '#151922', water: '#072539', park: '#16261D' },
+            rivers: [
+                // Maracanã / Canal do Mangue
+                { width: 22, pts: [[265, 345], [455, 325]] }
+            ],
+            waterPolys: [
+                // Guanabara Bay & Atlantic Ocean around Rio and Niterói
+                [[455, -30], [765, -30], [725, 265], [645, 445], [825, 535], [1030, 555], [1030, 680], [-30, 680], [-30, 565], [345, 535], [515, 435], [445, 265]]
+            ]
+        }
+    ];
+
+    // Dinosaur Polo Club inspired vibrant Logistics Line Colors
+    const LINE_COLORS = [
+        { id: 0, name: 'Gelb-Linie',    hex: '#F59E0B' },
+        { id: 1, name: 'Kobalt-Linie',  hex: '#2563EB' },
+        { id: 2, name: 'Korall-Linie',  hex: '#EF4444' },
+        { id: 3, name: 'Smaragd-Linie', hex: '#10B981' },
+        { id: 4, name: 'Amethyst-Linie',hex: '#8B5CF6' },
+        { id: 5, name: 'Cyan-Linie',    hex: '#06B6D4' },
+        { id: 6, name: 'Magenta-Linie', hex: '#EC4899' }
+    ];
+
+    /***************************************************************************
+     * 2. PROCEDURAL WEB AUDIO SYNTHESIZER (Disasterpeace / Rich Vreeland Style)
+     ***************************************************************************/
+    class SoundEngine {
+        constructor() {
+            this.ctx = null;
+            this.enabled = true;
+            // C Major 9th / Pentatonic harmonic palette (like Mini Metro)
+            this.scale = [261.63, 293.66, 329.63, 392.00, 440.00, 493.88, 523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
+        }
+        init() {
+            if (!this.ctx) {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) this.ctx = new AudioCtx();
+            }
+            if (this.ctx && this.ctx.state === 'suspended') {
+                this.ctx.resume();
+            }
+        }
+        playTone(freq, type = 'sine', duration = 0.28, vol = 0.10, slideTo = null, attack = 0.015) {
+            if (!this.enabled) return;
+            this.init();
+            if (!this.ctx) return;
+            try {
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, now);
+                if (slideTo) {
+                    osc.frequency.exponentialRampToValueAtTime(slideTo, now + duration);
+                }
+                gain.gain.setValueAtTime(0.0005, now);
+                gain.gain.linearRampToValueAtTime(vol, now + attack);
+                gain.gain.exponentialRampToValueAtTime(0.0005, now + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + duration + 0.03);
+            } catch (e) {}
+        }
+        playPackageDelivered(size) {
+            if (size === 'S') {
+                const f = this.scale[6 + Math.floor(Math.random() * 5)];
+                this.playTone(f, 'sine', 0.26, 0.08, null, 0.01);
+            } else if (size === 'L') {
+                const f = this.scale[3 + Math.floor(Math.random() * 4)];
+                this.playTone(f, 'triangle', 0.34, 0.11, null, 0.015);
+            } else {
+                const f = this.scale[0 + Math.floor(Math.random() * 3)];
+                this.playTone(f, 'triangle', 0.45, 0.13, null, 0.02);
+                setTimeout(() => this.playTone(f * 1.5, 'sine', 0.38, 0.08), 50);
+            }
+        }
+        playPickupPip() {
+            const f = this.scale[7 + Math.floor(Math.random() * 4)];
+            this.playTone(f * 0.5, 'sine', 0.11, 0.045, f * 0.75, 0.008);
+        }
+        playConnect(hasBridge = false, lineId = 0) {
+            const base = this.scale[(lineId * 2) % 7];
+            this.playTone(base, 'triangle', 0.22, 0.11, base * 1.25);
+            if (hasBridge) {
+                setTimeout(() => this.playTone(base * 1.5, 'sine', 0.30, 0.10), 65);
+            }
+        }
+        playDisconnect() {
+            this.playTone(392.00, 'sine', 0.18, 0.08, 261.63);
+        }
+        playPlaceDepot(size) {
+            const base = size === 'XL' ? 261.63 : (size === 'L' ? 329.63 : 392.00);
+            this.playTone(base, 'triangle', 0.26, 0.12);
+            setTimeout(() => this.playTone(base * 1.25, 'sine', 0.32, 0.10), 60);
+            setTimeout(() => this.playTone(base * 1.5, 'sine', 0.38, 0.10), 120);
+        }
+        playSpawnBuilding(demandType = 'S') {
+            const idx = demandType === 'XL' ? 1 : (demandType === 'L' ? 3 : 5);
+            const f = this.scale[idx + Math.floor(Math.random() * 3)];
+            this.playTone(f * 0.5, 'sine', 0.35, 0.08, f, 0.025);
+        }
+        playWarningTick(urgency = 0.5) {
+            const freq = 680 + urgency * 340;
+            this.playTone(freq, 'sine', 0.09, 0.04 + urgency * 0.05, null, 0.005);
+        }
+        playWeeklyChord() {
+            [261.63, 329.63, 392.00, 493.88, 587.33].forEach((f, idx) => {
+                setTimeout(() => this.playTone(f, 'sine', 0.75, 0.08, null, 0.03), idx * 70);
+            });
+        }
+    }
+
+    const sfx = new SoundEngine();
+
+    /***************************************************************************
+     * 3. GEOMETRY, SMOOTH INTERPOLATION & METRO CORRIDOR MATH
+     ***************************************************************************/
+    function dist(x1, y1, x2, y2) {
+        return Math.hypot(x2 - x1, y2 - y1);
+    }
+
+    function lerp(a, b, t) {
+        return a + (b - a) * t;
+    }
+
+    function damp(current, target, lambda, dt) {
+        return lerp(current, target, 1 - Math.exp(-lambda * dt));
+    }
+
+    function lerpAngle(a, b, t) {
+        let diff = ((b - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        return a + diff * t;
+    }
+
+    function easeInOutQuad(t) {
+        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    }
+
+    function distToSegment(px, py, x1, y1, x2, y2) {
+        const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+        if (l2 === 0) return dist(px, py, x1, y1);
+        let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+        t = Math.max(0, Math.min(1, t));
+        return dist(px, py, x1 + t * (x2 - x1), y1 + t * (y2 - y1));
+    }
+
+    function pointInPolygon(px, py, poly) {
+        let inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+            const xi = poly[i][0], yi = poly[i][1];
+            const xj = poly[j][0], yj = poly[j][1];
+            const intersect = ((yi > py) !== (yj > py)) &&
+                (px < (xj - xi) * (py - yi) / ((yj - yi) || 0.0001) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+    function isPointInWater(x, y, city, margin = 0) {
+        for (const r of city.rivers) {
+            const halfW = (r.width * 0.5) + margin;
+            for (let i = 0; i < r.pts.length - 1; i++) {
+                const d = distToSegment(x, y, r.pts[i][0], r.pts[i][1], r.pts[i + 1][0], r.pts[i + 1][1]);
+                if (d <= halfW) return true;
+            }
+        }
+        for (const poly of city.waterPolys) {
+            if (pointInPolygon(x, y, poly)) return true;
+            if (margin > 0) {
+                for (let i = 0; i < poly.length; i++) {
+                    const p1 = poly[i], p2 = poly[(i + 1) % poly.length];
+                    if (distToSegment(x, y, p1[0], p1[1], p2[0], p2[1]) < margin) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function doesSegmentCrossWater(x1, y1, x2, y2, city) {
+        const steps = Math.max(8, Math.ceil(dist(x1, y1, x2, y2) / 9));
+        for (let i = 1; i < steps; i++) {
+            const t = i / steps;
+            const px = x1 + (x2 - x1) * t;
+            const py = y1 + (y2 - y1) * t;
+            if (isPointInWater(px, py, city, -2)) return true;
+        }
+        return false;
+    }
+
+    // Generate sleek 45-degree Metro/Motorways knee point between two points, with optional parallel lane offset!
+    function computeMetroWaypoints(x1, y1, x2, y2, offsetPx = 0) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.hypot(dx, dy) || 1;
+        // Normal vector for parallel corridor separation (like Mini Metro shared tracks)
+        const nx = (-dy / len) * offsetPx;
+        const ny = (dx / len) * offsetPx;
+
+        const sx1 = x1 + nx, sy1 = y1 + ny;
+        const sx2 = x2 + nx, sy2 = y2 + ny;
+
+        const adx = Math.abs(sx2 - sx1);
+        const ady = Math.abs(sy2 - sy1);
+        if (adx < 10 || ady < 10 || Math.abs(adx - ady) < 10) {
+            return [[sx1, sy1], [sx2, sy2]];
+        }
+        const diag = Math.min(adx, ady);
+        let kx, ky;
+        if (adx > ady) {
+            kx = sx1 + Math.sign(sx2 - sx1) * (adx - diag);
+            ky = sy1;
+        } else {
+            kx = sx1;
+            ky = sy1 + Math.sign(sy2 - sy1) * (ady - diag);
+        }
+        return [[sx1, sy1], [kx, ky], [sx2, sy2]];
+    }
+
+    // Compute parallel lane offset when multiple lines share the same pair of stations
+    function getSegmentParallelOffset(lineId, nodeAId, nodeBId) {
+        const minId = Math.min(nodeAId, nodeBId);
+        const maxId = Math.max(nodeAId, nodeBId);
+        const sharingLines = [];
+        for (const l of state.lines) {
+            for (let i = 0; i < l.nodeIds.length - 1; i++) {
+                const a = l.nodeIds[i], b = l.nodeIds[i + 1];
+                if ((a === minId && b === maxId) || (a === maxId && b === minId)) {
+                    sharingLines.push(l.id);
+                    break;
+                }
+            }
+        }
+        if (sharingLines.length <= 1) return 0;
+        const idx = sharingLines.indexOf(lineId);
+        if (idx === -1) return 0;
+        const centered = idx - (sharingLines.length - 1) / 2;
+        const sign = nodeAId < nodeBId ? 1 : -1;
+        return centered * 6.5 * sign;
+    }
+
+    /***************************************************************************
+     * 4. CORE GAME STATE & PROGRESSION (MINIMALIST START -> LATE-GAME CHAOS)
+     ***************************************************************************/
+    const WORLD_W = 1000;
+    const WORLD_H = 650;
+
+    const DEPOT_SPECS = {
+        MAIN: { label: 'Hauptdepot',      cap: 45, allowed: ['S', 'L', 'XL'], radius: 22, droneRange: 255, color: '#F59E0B' },
+        S:    { label: 'S-Zwischenlager', cap: 6,  allowed: ['S'],            radius: 15, droneRange: 215, color: '#0EA5E9' },
+        L:    { label: 'L-Zwischenlager', cap: 12, allowed: ['S', 'L'],       radius: 17, droneRange: 245, color: '#F59E0B' },
+        XL:   { label: 'XL-Mega-Hub',     cap: 24, allowed: ['S', 'L', 'XL'], radius: 20, droneRange: 280, color: '#F43F5E' }
+    };
+
+    const VEHICLE_SPECS = {
+        drone: { label: 'Flugdrohne', speed: 128, capS: 1, capL: 0, capXL: 0 },
+        bike:  { label: 'Cyberbike',  speed: 96,  capS: 2, capL: 1, capXL: 0 },
+        car:   { label: 'Cybercar',   speed: 76,  capS: 4, capL: 2, capXL: 1 }
+    };
+
+    const state = {
+        cityIndex: 0,
+        nightMode: false,
+        endlessMode: false,
+        gameSpeed: 1,
+        score: 0,
+        scoreBySize: { S: 0, L: 0, XL: 0 },
+
+        // Time: 1 day = 16 seconds at 1x speed, 7 days = 1 week
+        timeOfDay: 8.0,
+        dayCount: 1,
+        weekCount: 1,
+        rushHourPulse: 0,
+
+        // Progressive Unlocks (Starts minimalist, expands every week!)
+        unlockedLines: 2, // Starts with 2 lines like Mini Metro, up to 7
+        everUnlocked: {
+            bike: true,
+            drone: true,
+            bridges: true,
+            car: false,
+            depot_S: false,
+            depot_L: false,
+            depot_XL: false
+        },
+
+        // Player Inventory (Minimalist at start!)
+        inventory: {
+            depot_S: 0,
+            depot_L: 0,
+            depot_XL: 0,
+            drone: 1,
+            bike: 2,
+            car: 0,
+            bridges: 1
+        },
+
+        // Active Tool & Selection
+        activeTool: 'route',
+        selectedLineId: 0,
+        hoveredLineId: null,
+        inspectedNodeId: null,
+        tutorialCompleted: false,
+
+        // Entities
+        nodes: [],
+        lines: [],
+        drones: [],
+        ripples: [],
+        floatingTexts: [],
+        flyingPackages: [], // Smooth bezier package transfer animations!
+
+        // Automatic Director Camera (Smoothly zooms out as the city grows!)
+        cam: {
+            x: 500, y: 325, zoom: 1.75,
+            targetX: 500, targetY: 325, targetZoom: 1.75,
+            manualOffsetTimer: 0
+        },
+
+        // Unified Pointer / Drag State (Supports Line Drawing, T-Bar Grabbing & Dock Token Dragging)
+        drag: {
+            active: false,
+            mode: null, // 'draw_line', 'dock_token'
+            tokenType: null,
+            startNode: null,
+            currWorldX: 500,
+            currWorldY: 325,
+            screenX: 0,
+            screenY: 0
+        },
+        hover: {
+            worldX: 500,
+            worldY: 325,
+            nodeId: null,
+            lineId: null,
+            terminalLineId: null
+        },
+
+        spawnTimer: 0,
+        packageTimer: 0,
+        warningTickTimer: 0,
+        nextId: 1
+    };
+
+    function getUID() {
+        return state.nextId++;
+    }
+
+    function currentCity() {
+        return CITIES[state.cityIndex];
+    }
+
+    /***************************************************************************
+     * 5. AUTOMATIC CAMERA ZOOM & FRAMING ("zoom macht das spiel automatisch")
+     ***************************************************************************/
+    function updateAutoCamera(rawDt, instant = false) {
+        if (state.nodes.length === 0) return;
+
+        // Compute bounding box of all spawned stations & depots
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+
+        for (const n of state.nodes) {
+            const pad = n.kind === 'DEPOT' ? 42 : 34;
+            if (n.x - pad < minX) minX = n.x - pad;
+            if (n.x + pad > maxX) maxX = n.x + pad;
+            if (n.y - pad < minY) minY = n.y - pad;
+            if (n.y + pad > maxY) maxY = n.y + pad;
+        }
+
+        // If player is actively dragging a line or token near the edge, gently include cursor in camera frame
+        if (state.drag.active) {
+            const cx = Math.max(40, Math.min(WORLD_W - 40, state.drag.currWorldX));
+            const cy = Math.max(40, Math.min(WORLD_H - 40, state.drag.currWorldY));
+            minX = Math.min(minX, cx - 45);
+            maxX = Math.max(maxX, cx + 45);
+            minY = Math.min(minY, cy - 45);
+            maxY = Math.max(maxY, cy + 45);
+        }
+
+        const spanW = Math.max(240, maxX - minX);
+        const spanH = Math.max(170, maxY - minY);
+
+        // Screen safe margins (accounting for minimalist top HUD and bottom circular tokens)
+        const marginX = Math.min(130, window.innerWidth * 0.14);
+        const marginTop = 88;
+        const marginBottom = 138;
+
+        const availW = Math.max(280, window.innerWidth - marginX * 2);
+        const availH = Math.max(220, window.innerHeight - marginTop - marginBottom);
+
+        const zoomX = availW / (spanW + 90);
+        const zoomY = availH / (spanH + 80);
+
+        // Early game starts zoomed in tightly (~1.72x), smoothly zooming out down to ~0.68x as metropolis fills!
+        const idealZoom = Math.max(0.58, Math.min(1.76, Math.min(zoomX, zoomY)));
+
+        const centerX = (minX + maxX) * 0.5;
+        // Slight vertical bias so nodes sit nicely above the bottom token dock
+        const centerY = (minY + maxY) * 0.5 + (marginBottom - marginTop) * 0.22 / idealZoom;
+
+        state.cam.targetX = centerX;
+        state.cam.targetY = centerY;
+        state.cam.targetZoom = idealZoom;
+
+        if (instant) {
+            state.cam.x = state.cam.targetX;
+            state.cam.y = state.cam.targetY;
+            state.cam.zoom = state.cam.targetZoom;
+        } else {
+            // Ultra-smooth critically damped camera interpolation (like Mini Motorways)
+            const camSpeed = state.drag.active ? 2.2 : 1.65;
+            state.cam.x = damp(state.cam.x, state.cam.targetX, camSpeed, rawDt);
+            state.cam.y = damp(state.cam.y, state.cam.targetY, camSpeed, rawDt);
+            state.cam.zoom = damp(state.cam.zoom, state.cam.targetZoom, camSpeed * 0.85, rawDt);
+        }
+    }
+
+    // Find a valid land coordinate within a progressive distance band from a reference point
+    function findProgressiveLandSpot(city, refX, refY, minDist, maxDist, minNodeDist = 64) {
+        for (let attempt = 0; attempt < 260; attempt++) {
+            const angle = Math.random() * Math.PI * 2;
+            const r = minDist + Math.random() * Math.max(20, maxDist - minDist);
+            const x = Math.max(58, Math.min(WORLD_W - 58, refX + Math.cos(angle) * r));
+            const y = Math.max(58, Math.min(WORLD_H - 58, refY + Math.sin(angle) * r));
+
+            if (isPointInWater(x, y, city, 17)) continue;
+            let tooClose = false;
+            for (const n of state.nodes) {
+                if (dist(x, y, n.x, n.y) < minNodeDist) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (!tooClose) return { x, y };
+        }
+        return findValidLandSpot(city, minNodeDist, 60, false);
+    }
+
+    function findValidLandSpot(city, minNodeDist = 62, marginFromEdge = 65, preferCenter = false) {
+        for (let attempt = 0; attempt < 300; attempt++) {
+            let x, y;
+            if (preferCenter) {
+                x = WORLD_W * 0.5 + (Math.random() - 0.5) * 240;
+                y = WORLD_H * 0.5 + (Math.random() - 0.5) * 180;
+            } else {
+                x = marginFromEdge + Math.random() * (WORLD_W - marginFromEdge * 2);
+                y = marginFromEdge + Math.random() * (WORLD_H - marginFromEdge * 2);
+            }
+            if (isPointInWater(x, y, city, 18)) continue;
+            let tooClose = false;
+            for (const n of state.nodes) {
+                if (dist(x, y, n.x, n.y) < minNodeDist) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (!tooClose) return { x, y };
+        }
+        for (let attempt = 0; attempt < 200; attempt++) {
+            const x = 55 + Math.random() * (WORLD_W - 110);
+            const y = 55 + Math.random() * (WORLD_H - 110);
+            if (!isPointInWater(x, y, city, 8)) return { x, y };
+        }
+        return { x: 500, y: 325 };
+    }
+
+    /***************************************************************************
+     * 6. INITIALIZATION: MINIMALIST BEGINNING (1 DEPOT + 2 NEARBY S-STATIONS)
+     ***************************************************************************/
+    function initCity(cityIdx) {
+        state.cityIndex = cityIdx;
+        const city = currentCity();
+
+        state.endlessMode = false;
+        state.gameSpeed = 1;
+        state.score = 0;
+        state.scoreBySize = { S: 0, L: 0, XL: 0 };
+        state.timeOfDay = 8.0;
+        state.dayCount = 1;
+        state.weekCount = 1;
+        state.rushHourPulse = 0;
+
+        // Minimalist starting resources (like Day 1 in Mini Metro / Mini Motorways)
+        state.unlockedLines = 2;
+        state.everUnlocked = {
+            bike: true,
+            drone: true,
+            bridges: true,
+            car: false,
+            depot_S: false,
+            depot_L: false,
+            depot_XL: false
+        };
+        state.inventory = {
+            depot_S: 0,
+            depot_L: 0,
+            depot_XL: 0,
+            drone: 1,
+            bike: 2,
+            car: 0,
+            bridges: 1
+        };
+
+        state.activeTool = 'route';
+        state.selectedLineId = 0;
+        state.hoveredLineId = null;
+        state.inspectedNodeId = null;
+        state.tutorialCompleted = false;
+
+        state.nodes = [];
+        state.drones = [];
+        state.ripples = [];
+        state.floatingTexts = [];
+        state.flyingPackages = [];
+        state.spawnTimer = 0;
+        state.packageTimer = 0;
+        state.nextId = 1;
+
+        // Initialize 7 Colored Logistics Lines (only `state.unlockedLines` shown initially)
+        state.lines = LINE_COLORS.map(c => ({
+            id: c.id,
+            name: c.name,
+            color: c.hex,
+            nodeIds: [],
+            bridgesUsed: 0,
+            vehicles: []
+        }));
+
+        // 1. Spawn Central Hauptdepot in a cozy central spot near the river
+        const mainPos = findValidLandSpot(city, 80, 160, true);
+        const mainDepot = createDepotNode('MAIN', mainPos.x, mainPos.y);
+        state.nodes.push(mainDepot);
+
+        // 2. Spawn ONLY 2 nearby S-Customer Stations on the same side of the river if possible
+        for (let i = 0; i < 2; i++) {
+            const pos = findProgressiveLandSpot(city, mainDepot.x, mainDepot.y, 85, 145, 68);
+            const cust = createCustomerNode('S', pos.x, pos.y);
+            state.nodes.push(cust);
+            spawnOrderForCustomer(cust);
+        }
+
+        // Update Top-Left Minimalist City Label
+        document.getElementById('uiCityName').textContent = city.name;
+        document.getElementById('uiCityRiver').textContent = city.riverName.split('&')[0].split(',')[0].trim();
+        document.getElementById('nodeInspector').classList.add('hidden');
+
+        // Show subtle onboarding whisper until player connects their first line
+        const hintBanner = document.getElementById('uiHintBanner');
+        hintBanner.classList.remove('opacity-0');
+        document.getElementById('uiHintText').textContent = 'Ziehe eine Linie vom Hauptdepot (HQ) zu den Kundenstationen';
+
+        applyThemeColors();
+        updateAutoCamera(1.0, true);
+        setGameSpeed(1);
+        updateAllUI();
+    }
+
+    function createDepotNode(depotType, x, y) {
+        const spec = DEPOT_SPECS[depotType];
+        const node = {
+            id: getUID(),
+            kind: 'DEPOT',
+            depotType,
+            label: spec.label,
+            x, y,
+            radius: spec.radius,
+            capacity: spec.cap,
+            allowedSizes: spec.allowed,
+            droneRange: spec.droneRange,
+            storage: [],
+            scale: 0.05,
+            scaleVel: 0,
+            pulsePhase: Math.random() * Math.PI * 2
+        };
+        state.ripples.push({ x, y, r: 4, maxR: 68, color: spec.color, alpha: 0.95 });
+        return node;
+    }
+
+    function createCustomerNode(demandType, x, y) {
+        const node = {
+            id: getUID(),
+            kind: 'CUSTOMER',
+            demandType, // 'S', 'L', 'XL'
+            x, y,
+            radius: demandType === 'XL' ? 16.5 : (demandType === 'L' ? 14.5 : 13),
+            waitingOrders: [],
+            maxOrders: 6,
+            overloadTimer: 0,
+            scale: 0.05,
+            scaleVel: 0,
+            pulsePhase: Math.random() * Math.PI * 2
+        };
+        const col = demandType === 'S' ? '#0EA5E9' : (demandType === 'L' ? '#F59E0B' : '#F43F5E');
+        state.ripples.push({ x, y, r: 3, maxR: 52, color: col, alpha: 0.9 });
+        sfx.playSpawnBuilding(demandType);
+        return node;
+    }
+
+    function spawnOrderForCustomer(customer) {
+        if (customer.waitingOrders.length >= 8) return;
+        let size = customer.demandType;
+        if (customer.demandType === 'L' && Math.random() < 0.25) size = 'S';
+        if (customer.demandType === 'XL' && Math.random() < 0.20) size = 'L';
+
+        const orderId = getUID();
+        customer.waitingOrders.push({
+            id: orderId,
+            size,
+            customerId: customer.id,
+            scale: 0.05 // Smooth pop-in animation for each waiting package pip!
+        });
+
+        // Stock corresponding package in the nearest Hauptdepot or XL-Hub
+        const mainDepots = state.nodes.filter(n => n.kind === 'DEPOT' && (n.depotType === 'MAIN' || n.depotType === 'XL'));
+        if (mainDepots.length > 0) {
+            mainDepots.sort((a, b) => dist(a.x, a.y, customer.x, customer.y) - dist(b.x, b.y, customer.x, customer.y));
+            const sourceDepot = mainDepots[0];
+            if (sourceDepot.storage.length < sourceDepot.capacity) {
+                sourceDepot.storage.push({
+                    id: orderId,
+                    size,
+                    targetCustomerId: customer.id,
+                    scale: 0.05
+                });
+            }
+        }
+    }
+
+    function syncMainDepotSupply() {
+        const mainDepots = state.nodes.filter(n => n.kind === 'DEPOT' && n.depotType === 'MAIN');
+        if (mainDepots.length === 0) return;
+
+        const existingIds = new Set();
+        for (const n of state.nodes) {
+            if (n.kind === 'DEPOT') {
+                for (const p of n.storage) existingIds.add(p.id);
+            }
+        }
+        for (const d of state.drones) {
+            if (d.cargo) existingIds.add(d.cargo.id);
+        }
+        for (const line of state.lines) {
+            for (const v of line.vehicles) {
+                for (const p of v.cargo) existingIds.add(p.id);
+            }
+        }
+
+        for (const n of state.nodes) {
+            if (n.kind === 'CUSTOMER') {
+                for (const ord of n.waitingOrders) {
+                    if (!existingIds.has(ord.id)) {
+                        // Pick closest Hauptdepot with space
+                        mainDepots.sort((a, b) => dist(a.x, a.y, n.x, n.y) - dist(b.x, b.y, n.x, n.y));
+                        const targetMain = mainDepots[0];
+                        if (targetMain.storage.length < targetMain.capacity) {
+                            targetMain.storage.push({
+                                id: ord.id,
+                                size: ord.size,
+                                targetCustomerId: n.id,
+                                scale: 0.1
+                            });
+                            existingIds.add(ord.id);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Spawn a visual flying package arc between two points (e.g. Depot -> Vehicle or Vehicle -> Customer)
+    function spawnFlyingPackageArc(fromX, fromY, toX, toY, size) {
+        state.flyingPackages.push({
+            fromX, fromY,
+            toX, toY,
+            size,
+            t: 0,
+            duration: 0.22
+        });
+    }
+
+    /***************************************************************************
+     * 7. VEHICLES & MULTI-MODAL HUB-AND-SPOKE LOGISTICS
+     ***************************************************************************/
+    function stationDroneAtNode(depotNode, freeFromStarter = false) {
+        if (!depotNode || depotNode.kind !== 'DEPOT') return false;
+        if (!freeFromStarter && state.inventory.drone <= 0) {
+            showFloatingText(depotNode.x, depotNode.y - 20, 'Keine Drohne verfügbar', '#EF4444');
+            return false;
+        }
+        if (!freeFromStarter) state.inventory.drone--;
+
+        // Trigger joyful spring bounce on depot
+        depotNode.scaleVel = 3.2;
+
+        const countAtHub = state.drones.filter(d => d.homeNodeId === depotNode.id).length;
+        const orbitAngle = countAtHub * 2.1;
+        state.drones.push({
+            id: getUID(),
+            homeNodeId: depotNode.id,
+            x: depotNode.x + Math.cos(orbitAngle) * 16,
+            y: depotNode.y + Math.sin(orbitAngle) * 16,
+            vx: 0, vy: 0,
+            state: 'IDLE',
+            cargo: null,
+            pickupNodeId: null,
+            dropNodeId: null,
+            rotorPhase: Math.random() * 10,
+            scale: 0.1,
+            trail: []
+        });
+        sfx.playPlaceDepot('S');
+        updateAllUI();
+        return true;
+    }
+
+    function addVehicleToLine(line, vType, freeFromStarter = false, spawnX = null, spawnY = null) {
+        if (!line || line.nodeIds.length < 2) {
+            showFloatingText(state.cam.x, state.cam.y, 'Zuerst eine Linie ziehen!', '#F59E0B');
+            return false;
+        }
+        if (!freeFromStarter && state.inventory[vType] <= 0) {
+            showFloatingText(state.cam.x, state.cam.y, `Kein ${VEHICLE_SPECS[vType].label} verfügbar`, '#EF4444');
+            return false;
+        }
+        if (!freeFromStarter) state.inventory[vType]--;
+
+        // Find closest segment if dropped at specific world coordinates
+        let segIdx = 0;
+        let startNode = state.nodes.find(n => n.id === line.nodeIds[0]);
+        if (spawnX !== null && spawnY !== null) {
+            let bestD = Infinity;
+            for (let i = 0; i < line.nodeIds.length - 1; i++) {
+                const n1 = state.nodes.find(n => n.id === line.nodeIds[i]);
+                const n2 = state.nodes.find(n => n.id === line.nodeIds[i + 1]);
+                if (!n1 || !n2) continue;
+                const d = distToSegment(spawnX, spawnY, n1.x, n1.y, n2.x, n2.y);
+                if (d < bestD) {
+                    bestD = d;
+                    segIdx = i;
+                    startNode = n1;
+                }
+            }
+        }
+
+        line.vehicles.push({
+            id: getUID(),
+            type: vType,
+            lineId: line.id,
+            segIndex: segIdx,
+            progress: 0,
+            dir: 1,
+            x: startNode ? startNode.x : 500,
+            y: startNode ? startNode.y : 325,
+            angle: 0,
+            scale: 0.1,
+            bounceScale: 1.0,
+            cargo: [],
+            dwellTimer: 0.08
+        });
+        sfx.playConnect(false, line.id);
+        updateAllUI();
+        return true;
+    }
+
+    function recalculateLineBridges(line) {
+        state.inventory.bridges += line.bridgesUsed;
+        line.bridgesUsed = 0;
+
+        const city = currentCity();
+        let needed = 0;
+        for (let i = 0; i < line.nodeIds.length - 1; i++) {
+            const n1 = state.nodes.find(n => n.id === line.nodeIds[i]);
+            const n2 = state.nodes.find(n => n.id === line.nodeIds[i + 1]);
+            if (!n1 || !n2) continue;
+            const pts = computeMetroWaypoints(n1.x, n1.y, n2.x, n2.y, 0);
+            let crosses = false;
+            for (let j = 0; j < pts.length - 1; j++) {
+                if (doesSegmentCrossWater(pts[j][0], pts[j][1], pts[j + 1][0], pts[j + 1][1], city)) {
+                    crosses = true;
+                    break;
+                }
+            }
+            if (crosses) needed++;
+        }
+        line.bridgesUsed = needed;
+        state.inventory.bridges -= needed;
+    }
+
+    function canNodeReachCustomerViaDrones(depotNode, customerNode, size) {
+        if (size !== 'S') return false;
+        const hasDrone = state.drones.some(d => d.homeNodeId === depotNode.id);
+        if (!hasDrone) return false;
+        return dist(depotNode.x, depotNode.y, customerNode.x, customerNode.y) <= depotNode.droneRange;
+    }
+
+    function canOtherLineDeliverFromDepot(depotNode, customerNode, size, excludeLineId) {
+        for (const l of state.lines) {
+            if (l.id === excludeLineId || l.nodeIds.length < 2) continue;
+            if (!l.nodeIds.includes(depotNode.id)) continue;
+            const hasCapableVehicle = l.vehicles.some(v =>
+                (size === 'S') ||
+                (size === 'L' && (v.type === 'bike' || v.type === 'car')) ||
+                (size === 'XL' && v.type === 'car')
+            );
+            if (!hasCapableVehicle) continue;
+            if (l.nodeIds.includes(customerNode.id)) return true;
+            for (const nid of l.nodeIds) {
+                const subNode = state.nodes.find(n => n.id === nid);
+                if (subNode && subNode.kind === 'DEPOT' && canNodeReachCustomerViaDrones(subNode, customerNode, size)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function completeDelivery(customerNode, pkg, fromX = null, fromY = null) {
+        const idx = customerNode.waitingOrders.findIndex(o => o.id === pkg.id || o.size === pkg.size);
+        if (idx !== -1) {
+            customerNode.waitingOrders.splice(idx, 1);
+        }
+        customerNode.overloadTimer = Math.max(0, customerNode.overloadTimer - 0.30);
+        // Gentle spring bounce on receiving station
+        customerNode.scaleVel = 2.4;
+
+        if (fromX !== null && fromY !== null) {
+            spawnFlyingPackageArc(fromX, fromY, customerNode.x, customerNode.y, pkg.size);
+        }
+
+        state.score++;
+        state.scoreBySize[pkg.size] = (state.scoreBySize[pkg.size] || 0) + 1;
+
+        // Trigger score bump in top-right HUD
+        const scoreEl = document.getElementById('uiScore');
+        scoreEl.textContent = state.score;
+        scoreEl.classList.remove('score-pop');
+        void scoreEl.offsetWidth;
+        scoreEl.classList.add('score-pop');
+
+        const col = pkg.size === 'S' ? '#0EA5E9' : (pkg.size === 'L' ? '#F59E0B' : '#F43F5E');
+        state.ripples.push({ x: customerNode.x, y: customerNode.y, r: customerNode.radius * 0.6, maxR: 44, color: col, alpha: 0.85 });
+        sfx.playPackageDelivered(pkg.size);
+    }
+
+    function updateDrones(dt) {
+        for (const d of state.drones) {
+            d.rotorPhase += dt * 30;
+            d.scale = damp(d.scale, 1.0, 12, dt);
+
+            const home = state.nodes.find(n => n.id === d.homeNodeId);
+            if (!home) continue;
+
+            if (d.state !== 'IDLE' && Math.random() < 0.65) {
+                d.trail.push({ x: d.x, y: d.y, alpha: 0.5 });
+                if (d.trail.length > 14) d.trail.shift();
+            }
+            for (let i = d.trail.length - 1; i >= 0; i--) {
+                d.trail[i].alpha -= dt * 1.5;
+                if (d.trail[i].alpha <= 0) d.trail.splice(i, 1);
+            }
+
+            const speed = VEHICLE_SPECS.drone.speed * (home.depotType === 'L' || home.depotType === 'XL' ? 1.15 : 1.0);
+
+            if (d.state === 'IDLE') {
+                const angle = d.rotorPhase * 0.07 + (d.id % 7);
+                const tx = home.x + Math.cos(angle) * (home.radius + 7);
+                const ty = home.y + Math.sin(angle) * (home.radius + 7);
+                d.x = damp(d.x, tx, 7, dt);
+                d.y = damp(d.y, ty, 7, dt);
+
+                let chosenPkgIdx = -1;
+                let targetNode = null;
+
+                for (let i = 0; i < home.storage.length; i++) {
+                    const p = home.storage[i];
+                    if (p.size !== 'S') continue;
+                    const cust = state.nodes.find(n => n.id === p.targetCustomerId);
+                    if (!cust || cust.waitingOrders.length === 0) continue;
+
+                    if (dist(home.x, home.y, cust.x, cust.y) <= home.droneRange) {
+                        chosenPkgIdx = i;
+                        targetNode = cust;
+                        break;
+                    }
+                    for (const relay of state.nodes) {
+                        if (relay.kind === 'DEPOT' && relay.id !== home.id &&
+                            relay.storage.length < relay.capacity &&
+                            dist(home.x, home.y, relay.x, relay.y) <= home.droneRange &&
+                            dist(relay.x, relay.y, cust.x, cust.y) < dist(home.x, home.y, cust.x, cust.y) - 40) {
+                            chosenPkgIdx = i;
+                            targetNode = relay;
+                            break;
+                        }
+                    }
+                    if (targetNode) break;
+                }
+
+                if (chosenPkgIdx !== -1 && targetNode) {
+                    d.cargo = home.storage.splice(chosenPkgIdx, 1)[0];
+                    d.dropNodeId = targetNode.id;
+                    d.state = 'TO_DROP';
+                    sfx.playPickupPip();
+                    continue;
+                }
+
+                if (home.depotType !== 'MAIN' && home.storage.length < home.capacity) {
+                    const sourceHub = state.nodes.find(n =>
+                        n.kind === 'DEPOT' && n.id !== home.id &&
+                        dist(home.x, home.y, n.x, n.y) <= home.droneRange &&
+                        n.storage.some(p => {
+                            if (p.size !== 'S') return false;
+                            const c = state.nodes.find(cu => cu.id === p.targetCustomerId);
+                            return c && dist(home.x, home.y, c.x, c.y) < dist(n.x, n.y, c.x, c.y);
+                        })
+                    );
+                    if (sourceHub) {
+                        d.pickupNodeId = sourceHub.id;
+                        d.state = 'TO_PICKUP';
+                    }
+                }
+            } else if (d.state === 'TO_PICKUP') {
+                const src = state.nodes.find(n => n.id === d.pickupNodeId);
+                if (!src) { d.state = 'RETURNING'; continue; }
+                const rem = dist(d.x, d.y, src.x, src.y);
+                if (rem < 9) {
+                    const pIdx = src.storage.findIndex(p => p.size === 'S');
+                    if (pIdx !== -1) {
+                        d.cargo = src.storage.splice(pIdx, 1)[0];
+                        d.dropNodeId = home.id;
+                        d.state = 'TO_DROP';
+                        sfx.playPickupPip();
+                    } else {
+                        d.state = 'RETURNING';
+                    }
+                } else {
+                    d.x += ((src.x - d.x) / rem) * speed * dt;
+                    d.y += ((src.y - d.y) / rem) * speed * dt;
+                }
+            } else if (d.state === 'TO_DROP') {
+                const dropTarget = state.nodes.find(n => n.id === d.dropNodeId);
+                if (!dropTarget || !d.cargo) {
+                    d.state = 'RETURNING';
+                    continue;
+                }
+                const rem = dist(d.x, d.y, dropTarget.x, dropTarget.y);
+                if (rem < 11) {
+                    if (dropTarget.kind === 'CUSTOMER') {
+                        completeDelivery(dropTarget, d.cargo, d.x, d.y);
+                    } else if (dropTarget.kind === 'DEPOT') {
+                        if (dropTarget.storage.length < dropTarget.capacity) {
+                            d.cargo.scale = 0.1;
+                            dropTarget.storage.push(d.cargo);
+                            spawnFlyingPackageArc(d.x, d.y, dropTarget.x, dropTarget.y, d.cargo.size);
+                        }
+                    }
+                    d.cargo = null;
+                    d.state = 'RETURNING';
+                } else {
+                    d.x += ((dropTarget.x - d.x) / rem) * speed * dt;
+                    d.y += ((dropTarget.y - d.y) / rem) * speed * dt;
+                }
+            } else if (d.state === 'RETURNING') {
+                const rem = dist(d.x, d.y, home.x, home.y);
+                if (rem < 14) {
+                    d.state = 'IDLE';
+                } else {
+                    d.x += ((home.x - d.x) / rem) * speed * dt;
+                    d.y += ((home.y - d.y) / rem) * speed * dt;
+                }
+            }
+        }
+    }
+
+    function canVehicleLoadPackage(vehicle, pkgSize) {
+        if (vehicle.type === 'bike' && pkgSize === 'XL') return false;
+        const maxUnits = vehicle.type === 'car' ? 4 : 2;
+        const usedUnits = vehicle.cargo.reduce((acc, p) => acc + (p.size === 'XL' ? 4 : (p.size === 'L' ? 2 : 1)), 0);
+        const reqUnits = pkgSize === 'XL' ? 4 : (pkgSize === 'L' ? 2 : 1);
+        return (usedUnits + reqUnits) <= maxUnits;
+    }
+
+    function handleVehicleStopAtNode(vehicle, line, node) {
+        let didAction = false;
+
+        // 1. UNLOAD
+        for (let i = vehicle.cargo.length - 1; i >= 0; i--) {
+            const pkg = vehicle.cargo[i];
+            if (node.kind === 'CUSTOMER' && (node.id === pkg.targetCustomerId || node.waitingOrders.some(o => o.size === pkg.size))) {
+                vehicle.cargo.splice(i, 1);
+                completeDelivery(node, pkg, vehicle.x, vehicle.y);
+                didAction = true;
+            } else if (node.kind === 'DEPOT' && node.depotType !== 'MAIN') {
+                const cust = state.nodes.find(n => n.id === pkg.targetCustomerId);
+                if (cust && !line.nodeIds.includes(cust.id) &&
+                    node.allowedSizes.includes(pkg.size) &&
+                    node.storage.length < node.capacity) {
+                    if (canNodeReachCustomerViaDrones(node, cust, pkg.size) ||
+                        canOtherLineDeliverFromDepot(node, cust, pkg.size, line.id)) {
+                        vehicle.cargo.splice(i, 1);
+                        pkg.scale = 0.1;
+                        node.storage.push(pkg);
+                        node.scaleVel = 1.8;
+                        spawnFlyingPackageArc(vehicle.x, vehicle.y, node.x, node.y, pkg.size);
+                        didAction = true;
+                    }
+                }
+            }
+        }
+
+        // 2. LOAD
+        if (node.kind === 'DEPOT' && node.storage.length > 0) {
+            for (let i = node.storage.length - 1; i >= 0; i--) {
+                const pkg = node.storage[i];
+                if (!canVehicleLoadPackage(vehicle, pkg.size)) continue;
+
+                const cust = state.nodes.find(n => n.id === pkg.targetCustomerId);
+                if (!cust || cust.waitingOrders.length === 0) {
+                    node.storage.splice(i, 1);
+                    continue;
+                }
+
+                const lineVisitsCustomer = line.nodeIds.some(nid => {
+                    const cn = state.nodes.find(x => x.id === nid);
+                    return cn && cn.kind === 'CUSTOMER' && (cn.id === cust.id || cn.waitingOrders.some(o => o.size === pkg.size));
+                });
+
+                let lineVisitsTransferHub = false;
+                if (!lineVisitsCustomer) {
+                    for (const nid of line.nodeIds) {
+                        if (nid === node.id) continue;
+                        const hub = state.nodes.find(x => x.id === nid);
+                        if (hub && hub.kind === 'DEPOT' && hub.allowedSizes.includes(pkg.size) && hub.storage.length < hub.capacity) {
+                            if (canNodeReachCustomerViaDrones(hub, cust, pkg.size) ||
+                                canOtherLineDeliverFromDepot(hub, cust, pkg.size, line.id)) {
+                                lineVisitsTransferHub = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (lineVisitsCustomer || lineVisitsTransferHub) {
+                    const loaded = node.storage.splice(i, 1)[0];
+                    loaded.scale = 0.1;
+                    vehicle.cargo.push(loaded);
+                    spawnFlyingPackageArc(node.x, node.y, vehicle.x, vehicle.y, loaded.size);
+                    didAction = true;
+                }
+            }
+        }
+
+        if (didAction) {
+            vehicle.bounceScale = 1.28;
+            vehicle.dwellTimer = 0.20;
+            sfx.playPickupPip();
+        }
+    }
+
+    function updateLineVehicles(dt) {
+        for (const line of state.lines) {
+            if (line.nodeIds.length < 2) continue;
+
+            for (const v of line.vehicles) {
+                v.scale = damp(v.scale, 1.0, 12, dt);
+                v.bounceScale = damp(v.bounceScale, 1.0, 14, dt);
+
+                for (const c of v.cargo) {
+                    c.scale = damp(c.scale || 1, 1.0, 14, dt);
+                }
+
+                if (v.dwellTimer > 0) {
+                    v.dwellTimer -= dt;
+                    continue;
+                }
+
+                if (v.segIndex >= line.nodeIds.length - 1) {
+                    v.segIndex = Math.max(0, line.nodeIds.length - 2);
+                    v.progress = 0;
+                }
+
+                const nA = state.nodes.find(n => n.id === line.nodeIds[v.segIndex]);
+                const nB = state.nodes.find(n => n.id === line.nodeIds[v.segIndex + 1]);
+                if (!nA || !nB) continue;
+
+                const fromNode = v.dir === 1 ? nA : nB;
+                const toNode   = v.dir === 1 ? nB : nA;
+
+                const laneOffset = getSegmentParallelOffset(line.id, fromNode.id, toNode.id);
+                const pts = computeMetroWaypoints(fromNode.x, fromNode.y, toNode.x, toNode.y, laneOffset);
+
+                let segLengths = [];
+                let totalLen = 0;
+                for (let i = 0; i < pts.length - 1; i++) {
+                    const l = dist(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
+                    segLengths.push(l);
+                    totalLen += l;
+                }
+                totalLen = Math.max(1, totalLen);
+
+                // Smooth velocity profile: gentle deceleration/acceleration near stops (Mini Metro train feel)
+                const edgeDist = Math.min(v.progress, 1 - v.progress);
+                const speedFactor = 0.58 + 0.62 * Math.min(1, edgeDist * 4.5);
+                const speed = VEHICLE_SPECS[v.type].speed * speedFactor;
+
+                v.progress += (speed * dt) / totalLen;
+
+                if (v.progress >= 1) {
+                    v.progress = 0;
+                    v.x = toNode.x;
+                    v.y = toNode.y;
+                    v.dwellTimer = 0.09;
+
+                    handleVehicleStopAtNode(v, line, toNode);
+
+                    if (v.dir === 1) {
+                        if (v.segIndex < line.nodeIds.length - 2) {
+                            v.segIndex++;
+                        } else {
+                            v.dir = -1;
+                        }
+                    } else {
+                        if (v.segIndex > 0) {
+                            v.segIndex--;
+                        } else {
+                            v.dir = 1;
+                        }
+                    }
+                } else {
+                    let targetDist = v.progress * totalLen;
+                    for (let i = 0; i < segLengths.length; i++) {
+                        if (targetDist <= segLengths[i] || i === segLengths.length - 1) {
+                            const localT = segLengths[i] > 0 ? targetDist / segLengths[i] : 0;
+                            const p1 = pts[i], p2 = pts[i + 1];
+                            v.x = p1[0] + (p2[0] - p1[0]) * localT;
+                            v.y = p1[1] + (p2[1] - p1[1]) * localT;
+                            const desiredAngle = Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
+                            v.angle = lerpAngle(v.angle, desiredAngle, Math.min(1, dt * 18));
+                            break;
+                        }
+                        targetDist -= segLengths[i];
+                    }
+                }
+            }
+        }
+    }
+
+    /***************************************************************************
+     * 8. SIMULATION TICK: SPRING PHYSICS, ESCALATING SPAWNS & CHAOS CURVE
+     ***************************************************************************/
+    function updateSimulation(rawDt) {
+        // 1. Always update Auto-Zoom Camera & Spring Animations even when paused!
+        updateAutoCamera(rawDt, false);
+
+        for (const n of state.nodes) {
+            // Underdamped spring physics for crisp, tactile Mini Metro pop-in & bounce
+            const force = (1.0 - n.scale) * 38.0;
+            n.scaleVel = (n.scaleVel + force * rawDt) * Math.exp(-6.5 * rawDt);
+            n.scale = Math.max(0.05, n.scale + n.scaleVel * rawDt);
+            n.pulsePhase += rawDt * 2.8;
+
+            if (n.kind === 'CUSTOMER') {
+                for (const ord of n.waitingOrders) {
+                    ord.scale = damp(ord.scale || 0.1, 1.0, 14, rawDt);
+                }
+            } else if (n.kind === 'DEPOT') {
+                for (const p of n.storage) {
+                    p.scale = damp(p.scale || 0.1, 1.0, 14, rawDt);
+                }
+            }
+        }
+
+        for (let i = state.ripples.length - 1; i >= 0; i--) {
+            const rp = state.ripples[i];
+            rp.r = damp(rp.r, rp.maxR, 4.5, rawDt);
+            rp.alpha -= rawDt * 0.95;
+            if (rp.alpha <= 0) state.ripples.splice(i, 1);
+        }
+
+        for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
+            const ft = state.floatingTexts[i];
+            ft.y -= rawDt * 26;
+            ft.alpha -= rawDt * 0.85;
+            if (ft.alpha <= 0) state.floatingTexts.splice(i, 1);
+        }
+
+        for (let i = state.flyingPackages.length - 1; i >= 0; i--) {
+            const fp = state.flyingPackages[i];
+            fp.t += rawDt / fp.duration;
+            if (fp.t >= 1) state.flyingPackages.splice(i, 1);
+        }
+
+        if (state.gameSpeed === 0) return;
+        const dt = rawDt * state.gameSpeed;
+
+        // 2. Advance Clock (24h = 16s at 1x -> 1 Week = 112s)
+        state.timeOfDay += dt * (24 / 16);
+        if (state.timeOfDay >= 24) {
+            state.timeOfDay -= 24;
+            state.dayCount++;
+
+            // Spawn a 2nd Supply Hauptdepot in outer district at start of Week 3 (like Mini Motorways new factories!)
+            if (state.dayCount === 15) {
+                const city = currentCity();
+                const main0 = state.nodes.find(n => n.kind === 'DEPOT' && n.depotType === 'MAIN');
+                const pos = findProgressiveLandSpot(city, main0 ? main0.x : 500, main0 ? main0.y : 325, 290, 440, 85);
+                const secondMain = createDepotNode('MAIN', pos.x, pos.y);
+                state.nodes.push(secondMain);
+                sfx.playPlaceDepot('XL');
+                showFloatingText(pos.x, pos.y - 24, 'Neues Hauptdepot eröffnet!', '#F59E0B');
+            }
+
+            if ((state.dayCount - 1) % 7 === 0) {
+                state.weekCount++;
+                triggerWeeklyUpgradeModal();
+                return;
+            }
+        }
+        updateClockUI();
+
+        // 3. Progressive City Expansion (Minimalist early -> Wide & Chaotic late game!)
+        state.spawnTimer += dt;
+        // Week 1 spawns slowly (every 15s); by Week 5+ spawns every 6.5s up to 34 stations!
+        const spawnInterval = Math.max(6.2, 16.0 - state.weekCount * 1.9);
+        const maxCustomers = Math.min(36, 5 + state.weekCount * 6);
+        const currentCustomers = state.nodes.filter(n => n.kind === 'CUSTOMER').length;
+
+        if (state.spawnTimer >= spawnInterval && currentCustomers < maxCustomers) {
+            state.spawnTimer = 0;
+            const city = currentCity();
+            const mainDepot = state.nodes.find(n => n.kind === 'DEPOT' && n.depotType === 'MAIN') || { x: 500, y: 325 };
+
+            // Determine package class based on progression:
+            // Days 1-3: Only S!
+            // Days 4-7: S (65%) and L (35%)!
+            // Week 2+: S, L, and XL heavy cargo!
+            let demandType = 'S';
+            const r = Math.random();
+            if (state.dayCount >= 4 && state.weekCount === 1) {
+                demandType = r < 0.62 ? 'S' : 'L';
+            } else if (state.weekCount === 2) {
+                demandType = r < 0.50 ? 'S' : (r < 0.85 ? 'L' : 'XL');
+            } else if (state.weekCount >= 3) {
+                demandType = r < 0.42 ? 'S' : (r < 0.76 ? 'L' : 'XL');
+            }
+
+            // First time an XL Customer spawns, ensure player has at least 1 Cybercar unlocked so it's always solvable!
+            if (demandType === 'XL' && !state.everUnlocked.car) {
+                state.everUnlocked.car = true;
+                state.inventory.car += 1;
+                showFloatingText(mainDepot.x, mainDepot.y - 28, 'XL-Schwerlast erschienen: +1 Cybercar freigeschaltet!', '#8B5CF6');
+                updateAllUI();
+            }
+
+            // Distance from center expands organically each week -> triggers automatic camera zoom-out!
+            const minR = Math.min(220, 75 + state.dayCount * 6);
+            const maxR = Math.min(480, 155 + state.dayCount * 14);
+            const pos = findProgressiveLandSpot(city, mainDepot.x, mainDepot.y, minR, maxR, 58);
+
+            const cust = createCustomerNode(demandType, pos.x, pos.y);
+            state.nodes.push(cust);
+            spawnOrderForCustomer(cust);
+        }
+
+        // 4. Escalating Package Demand & Late-Game Rush-Hour Waves
+        state.packageTimer += dt;
+        // Rush hour between 16:00 and 20:00 each day intensifies order generation in later weeks
+        const isRushHour = state.timeOfDay >= 16 && state.timeOfDay <= 20;
+        const rushMultiplier = isRushHour ? (1 + state.weekCount * 0.18) : 1.0;
+        const baseOrderInterval = Math.max(0.75, (4.8 - currentCustomers * 0.11 - state.weekCount * 0.25) / rushMultiplier);
+
+        if (state.packageTimer >= baseOrderInterval) {
+            state.packageTimer = 0;
+            const customers = state.nodes.filter(n => n.kind === 'CUSTOMER');
+            if (customers.length > 0) {
+                const c = customers[Math.floor(Math.random() * customers.length)];
+                spawnOrderForCustomer(c);
+                // In late game (Week 4+), occasional double-order surge!
+                if (state.weekCount >= 4 && Math.random() < 0.35) {
+                    const c2 = customers[Math.floor(Math.random() * customers.length)];
+                    spawnOrderForCustomer(c2);
+                }
+            }
+        }
+
+        syncMainDepotSupply();
+        updateDrones(dt);
+        updateLineVehicles(dt);
+
+        // 5. Station Overcrowding & Radial Urgency Timers (Mini Metro / Motorways tension)
+        let maxUrgency = 0;
+        for (const n of state.nodes) {
+            if (n.kind !== 'CUSTOMER') continue;
+            if (n.waitingOrders.length > 4) {
+                const rate = (n.waitingOrders.length - 3.5) * (0.018 + state.weekCount * 0.002);
+                n.overloadTimer += dt * rate;
+                if (n.overloadTimer > maxUrgency) maxUrgency = n.overloadTimer;
+
+                if (n.overloadTimer >= 1.0) {
+                    if (state.endlessMode) {
+                        n.waitingOrders.splice(0, 3);
+                        n.overloadTimer = 0.15;
+                        n.scaleVel = 2.0;
+                    } else {
+                        triggerGameOver(n);
+                        return;
+                    }
+                }
+            } else {
+                n.overloadTimer = Math.max(0, n.overloadTimer - dt * 0.09);
+            }
+        }
+
+        if (maxUrgency > 0.08) {
+            state.warningTickTimer += rawDt;
+            const tickInterval = Math.max(0.22, 0.65 - maxUrgency * 0.40);
+            if (state.warningTickTimer >= tickInterval) {
+                state.warningTickTimer = 0;
+                sfx.playWarningTick(maxUrgency);
+            }
+        }
+    }
+    /***************************************************************************
+     * 9. HIGH-DPI VECTOR RENDERER (AUTHENTIC MINI METRO / MOTORWAYS GFX)
+     ***************************************************************************/
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        updateAutoCamera(1.0, true);
+    }
+
+    function screenToWorld(sx, sy) {
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+        return {
+            x: (sx - cx) / state.cam.zoom + state.cam.x,
+            y: (sy - cy) / state.cam.zoom + state.cam.y
+        };
+    }
+
+    function drawRoundedPolygon(ctx, pts) {
+        if (pts.length < 3) return;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) {
+            ctx.lineTo(pts[i][0], pts[i][1]);
+        }
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    function drawSmoothPolyline(ctx, pts, cornerRadius = 22) {
+        if (pts.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length - 1; i++) {
+            const p0 = pts[i - 1];
+            const p1 = pts[i];
+            const p2 = pts[i + 1];
+            const d1 = dist(p0[0], p0[1], p1[0], p1[1]);
+            const d2 = dist(p1[0], p1[1], p2[0], p2[1]);
+            const r = Math.min(cornerRadius, d1 * 0.48, d2 * 0.48);
+            ctx.arcTo(p1[0], p1[1], p2[0], p2[1], r);
+        }
+        ctx.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
+        ctx.stroke();
+    }
+
+    // Compute exact Connector Plug ("Verbindungsstelle") and T-Bar coordinates on the rendered corridor
+    function getConnectorPoint(node, neighborNode, laneOffset = 0) {
+        if (!node || !neighborNode) return null;
+        const pts = computeMetroWaypoints(node.x, node.y, neighborNode.x, neighborNode.y, laneOffset);
+        const nextPt = pts[1] || [neighborNode.x, neighborNode.y];
+        const angle = Math.atan2(nextPt[1] - node.y, nextPt[0] - node.x);
+        const distFromCenter = node.radius + 5.5;
+        return {
+            x: node.x + Math.cos(angle) * distFromCenter,
+            y: node.y + Math.sin(angle) * distFromCenter,
+            angle
+        };
+    }
+
+    function getTerminalTBarPoint(node, neighborNode, laneOffset = 0) {
+        if (!node || !neighborNode) return null;
+        const pts = computeMetroWaypoints(node.x, node.y, neighborNode.x, neighborNode.y, laneOffset);
+        const nextPt = pts[1] || [neighborNode.x, neighborNode.y];
+        const angle = Math.atan2(node.y - nextPt[1], node.x - nextPt[0]);
+        const stemDist = node.radius + 10.5;
+        return {
+            x: node.x + Math.cos(angle) * stemDist,
+            y: node.y + Math.sin(angle) * stemDist,
+            angle,
+            stemDist
+        };
+    }
+
+    // Draw Iconic Mini Metro T-Bar Terminal Cap at the ends of a Line
+    function drawLineTerminalTBar(ctx, node, neighborNode, color, isHovered) {
+        const tbar = getTerminalTBarPoint(node, neighborNode, 0);
+        if (!tbar) return;
+        const stemDist = node.radius + (isHovered ? 12.5 : 9.5);
+        const barHalf = isHovered ? 9.5 : 7.5;
+
+        ctx.save();
+        ctx.translate(node.x, node.y);
+        ctx.rotate(tbar.angle);
+        ctx.strokeStyle = color;
+        ctx.lineCap = 'round';
+        ctx.lineWidth = isHovered ? 6.5 : 5.0;
+
+        // Stem sticking out from station
+        ctx.beginPath();
+        ctx.moveTo(node.radius * 0.6, 0);
+        ctx.lineTo(stemDist, 0);
+        ctx.stroke();
+
+        // Perpendicular T-Bar
+        ctx.beginPath();
+        ctx.moveTo(stemDist, -barHalf);
+        ctx.lineTo(stemDist, barHalf);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Draw Tactile Connector Plug ("Verbindungsstelle") where a line docks into a station
+    function drawConnectorPlug(ctx, x, y, color, isHovered = false) {
+        ctx.save();
+        ctx.translate(x, y);
+        const r = isHovered ? 7.2 : 5.2;
+        if (isHovered) {
+            ctx.fillStyle = color;
+            ctx.globalAlpha = 0.28;
+            ctx.beginPath();
+            ctx.arc(0, 0, r + 4.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(0, 0, isHovered ? 2.8 : 2.0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function drawPackagePip(ctx, x, y, size, r = 5.2, scale = 1.0) {
+        if (scale <= 0.02) return;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+        if (size === 'S') {
+            ctx.fillStyle = '#0EA5E9';
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (size === 'L') {
+            ctx.fillStyle = '#F59E0B';
+            ctx.beginPath();
+            ctx.roundRect(-r, -r, r * 2, r * 2, r * 0.38);
+            ctx.fill();
+        } else {
+            ctx.fillStyle = '#F43F5E';
+            ctx.rotate(Math.PI / 4);
+            ctx.beginPath();
+            ctx.roundRect(-r * 0.95, -r * 0.95, r * 1.9, r * 1.9, r * 0.25);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    function drawRegularPolygon(ctx, x, y, radius, sides, rotation = 0) {
+        ctx.beginPath();
+        for (let i = 0; i < sides; i++) {
+            const a = rotation + (i * 2 * Math.PI) / sides;
+            const px = x + Math.cos(a) * radius;
+            const py = y + Math.sin(a) * radius;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+    }
+
+    function renderGame() {
+        const dpr = window.devicePixelRatio || 1;
+        ctx.save();
+        ctx.scale(dpr, dpr);
+
+        const city = currentCity();
+        const pal = state.nightMode ? city.night : city.day;
+
+        // 1. Paper / Night-Slate Background Fill
+        ctx.fillStyle = pal.land;
+        ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+        // Apply Smooth Auto-Camera Transform
+        ctx.translate(window.innerWidth / 2, window.innerHeight / 2);
+        ctx.scale(state.cam.zoom, state.cam.zoom);
+        ctx.translate(-state.cam.x, -state.cam.y);
+
+        // 2. Ultra-Subtle Cartographic Grid
+        ctx.strokeStyle = state.nightMode ? 'rgba(255,255,255,0.022)' : 'rgba(0,0,0,0.025)';
+        ctx.lineWidth = 1;
+        const gridStep = 50;
+        ctx.beginPath();
+        for (let gx = -100; gx <= WORLD_W + 100; gx += gridStep) {
+            ctx.moveTo(gx, -100); ctx.lineTo(gx, WORLD_H + 100);
+        }
+        for (let gy = -100; gy <= WORLD_H + 100; gy += gridStep) {
+            ctx.moveTo(-100, gy); ctx.lineTo(WORLD_W + 100, gy);
+        }
+        ctx.stroke();
+
+        // 3. Authentic Water Polygons & Smooth Rivers (with Soft Bank Contour)
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Outer River Bank Contour (Mini Motorways subtle shoreline)
+        ctx.strokeStyle = state.nightMode ? 'rgba(56, 189, 248, 0.08)' : 'rgba(0, 0, 0, 0.04)';
+        for (const r of city.rivers) {
+            ctx.lineWidth = r.width + 5;
+            drawSmoothPolyline(ctx, r.pts, 40);
+        }
+
+        ctx.fillStyle = pal.water;
+        ctx.strokeStyle = pal.water;
+        for (const poly of city.waterPolys) {
+            drawRoundedPolygon(ctx, poly);
+        }
+        for (const r of city.rivers) {
+            ctx.lineWidth = r.width;
+            drawSmoothPolyline(ctx, r.pts, 40);
+        }
+
+        // 4. Week 1 Onboarding Guide Wave (Pulsing dotted path from HQ to 1st customer until first line is drawn)
+        if (!state.tutorialCompleted && state.lines.every(l => l.nodeIds.length < 2)) {
+            const mainDepot = state.nodes.find(n => n.kind === 'DEPOT');
+            const firstCust = state.nodes.find(n => n.kind === 'CUSTOMER');
+            if (mainDepot && firstCust) {
+                const pts = computeMetroWaypoints(mainDepot.x, mainDepot.y, firstCust.x, firstCust.y, 0);
+                ctx.save();
+                ctx.strokeStyle = '#F59E0B';
+                ctx.globalAlpha = 0.45 + Math.sin(performance.now() * 0.005) * 0.2;
+                ctx.lineWidth = 6;
+                ctx.setLineDash([10, 10]);
+                ctx.lineDashOffset = -performance.now() * 0.035;
+                drawSmoothPolyline(ctx, pts, 20);
+                ctx.restore();
+            }
+        }
+
+        // 5. Subtle Drone Air-Zone Rings
+        const showAllDroneRings = state.activeTool === 'drone' || (state.drag.active && state.drag.tokenType === 'drone');
+        for (const n of state.nodes) {
+            if (n.kind !== 'DEPOT') continue;
+            const droneCount = state.drones.filter(d => d.homeNodeId === n.id).length;
+            if (droneCount > 0 || state.inspectedNodeId === n.id || showAllDroneRings) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, n.droneRange * n.scale, 0, Math.PI * 2);
+                ctx.strokeStyle = state.nightMode ? 'rgba(14, 165, 233, 0.20)' : 'rgba(14, 165, 233, 0.24)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([6, 6]);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        // 6. Shockwave Ripples
+        for (const rp of state.ripples) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+            ctx.strokeStyle = rp.color;
+            ctx.globalAlpha = Math.max(0, rp.alpha);
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // 7. Logistics Corridors (Lines), Parallel Offsets, Bridges, T-Bar Terminals & Connector Plugs
+        for (const line of state.lines) {
+            if (line.nodeIds.length < 2) continue;
+            const isSelected = line.id === state.selectedLineId || line.id === state.hoveredLineId || line.id === state.hover.lineId;
+
+            // Draw T-Bar Terminals at start and end of the line (unless that end is currently being dragged)
+            const firstNode = state.nodes.find(n => n.id === line.nodeIds[0]);
+            const secondNode = state.nodes.find(n => n.id === line.nodeIds[1]);
+            const lastNode = state.nodes.find(n => n.id === line.nodeIds[line.nodeIds.length - 1]);
+            const prevLastNode = state.nodes.find(n => n.id === line.nodeIds[line.nodeIds.length - 2]);
+
+            const draggingThisLine = state.drag.active && state.selectedLineId === line.id;
+            if (!(draggingThisLine && state.drag.mode === 'reroute_end' && state.drag.endSide === 'head')) {
+                drawLineTerminalTBar(ctx, firstNode, secondNode, line.color, isSelected);
+            }
+            if (!(draggingThisLine && state.drag.mode === 'reroute_end' && state.drag.endSide === 'tail')) {
+                drawLineTerminalTBar(ctx, lastNode, prevLastNode, line.color, isSelected);
+            }
+
+            // Draw corridor segments with parallel lane separation
+            for (let i = 0; i < line.nodeIds.length - 1; i++) {
+                // If middle segment is currently unplugged and being stretched in reroute_mid, skip direct segment
+                if (draggingThisLine && state.drag.mode === 'reroute_mid' && state.drag.insertIndex === i + 1) {
+                    continue;
+                }
+
+                const n1 = state.nodes.find(n => n.id === line.nodeIds[i]);
+                const n2 = state.nodes.find(n => n.id === line.nodeIds[i + 1]);
+                if (!n1 || !n2) continue;
+
+                const laneOffset = getSegmentParallelOffset(line.id, n1.id, n2.id);
+                const pts = computeMetroWaypoints(n1.x, n1.y, n2.x, n2.y, laneOffset);
+                const isBridge = pts.some((p, idx) => idx < pts.length - 1 && doesSegmentCrossWater(p[0], p[1], pts[idx + 1][0], pts[idx + 1][1], city));
+
+                ctx.save();
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                // Bridge Casing over water
+                if (isBridge) {
+                    ctx.strokeStyle = state.nightMode ? '#334155' : '#FFFFFF';
+                    ctx.lineWidth = isSelected ? 15.5 : 13.5;
+                    drawSmoothPolyline(ctx, pts, 22);
+                }
+
+                // Subtle under-glow when line is hovered/selected
+                if (isSelected) {
+                    ctx.strokeStyle = line.color;
+                    ctx.globalAlpha = 0.22;
+                    ctx.lineWidth = 15;
+                    drawSmoothPolyline(ctx, pts, 22);
+                    ctx.globalAlpha = 1.0;
+                }
+
+                // Crisp Metro Line
+                ctx.strokeStyle = line.color;
+                ctx.lineWidth = isSelected ? 9.2 : 7.4;
+                drawSmoothPolyline(ctx, pts, 22);
+                ctx.restore();
+
+                // Draw Tactile Connector Plugs ("Verbindungsstellen") at both ends of segment
+                const c1 = getConnectorPoint(n1, n2, laneOffset);
+                const c2 = getConnectorPoint(n2, n1, -laneOffset);
+                if (c1) {
+                    const hov1 = state.hover.connector && state.hover.connector.line.id === line.id && state.hover.connector.node.id === n1.id;
+                    drawConnectorPlug(ctx, c1.x, c1.y, line.color, hov1);
+                }
+                if (c2) {
+                    const hov2 = state.hover.connector && state.hover.connector.line.id === line.id && state.hover.connector.node.id === n2.id;
+                    drawConnectorPlug(ctx, c2.x, c2.y, line.color, hov2);
+                }
+            }
+        }
+
+        // 8. Active Rubber-Band Line Drawing & Unplug/Reroute Preview
+        if (state.drag.active && (state.drag.mode === 'draw_line' || state.drag.mode === 'reroute_end' || state.drag.mode === 'reroute_mid')) {
+            const line = state.lines[state.selectedLineId];
+            const snapNode = state.drag.snapNode;
+            const targetX = snapNode ? snapNode.x : state.drag.currWorldX;
+            const targetY = snapNode ? snapNode.y : state.drag.currWorldY;
+
+            ctx.save();
+            ctx.strokeStyle = line.color;
+            ctx.lineWidth = 8.8;
+            ctx.globalAlpha = 0.88;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            if (state.drag.mode === 'reroute_mid' && state.drag.prevNode && state.drag.nextNode) {
+                const pts1 = computeMetroWaypoints(state.drag.prevNode.x, state.drag.prevNode.y, targetX, targetY, 0);
+                const pts2 = computeMetroWaypoints(targetX, targetY, state.drag.nextNode.x, state.drag.nextNode.y, 0);
+                drawSmoothPolyline(ctx, pts1, 22);
+                drawSmoothPolyline(ctx, pts2, 22);
+            } else {
+                const anchor = state.drag.mode === 'reroute_end' ? state.drag.anchorNode : state.drag.startNode;
+                if (anchor) {
+                    const pts = computeMetroWaypoints(anchor.x, anchor.y, targetX, targetY, 0);
+                    drawSmoothPolyline(ctx, pts, 22);
+                }
+            }
+
+            // Magnetic Docking Ring around hovered target station
+            if (snapNode) {
+                ctx.beginPath();
+                ctx.arc(snapNode.x, snapNode.y, snapNode.radius + 9, 0, Math.PI * 2);
+                ctx.strokeStyle = line.color;
+                ctx.lineWidth = 3.5;
+                ctx.stroke();
+            }
+
+            // Connector Plug at cursor tip
+            drawConnectorPlug(ctx, targetX, targetY, line.color, true);
+            ctx.restore();
+        }
+
+        // 9. Ghost Preview when dragging a Depot or Drone Token from the Bottom Dock
+        if (state.drag.active && state.drag.mode === 'dock_token' && state.drag.tokenType) {
+            const tType = state.drag.tokenType;
+            const wx = state.drag.currWorldX;
+            const wy = state.drag.currWorldY;
+            ctx.save();
+            if (tType.startsWith('depot_')) {
+                const dClass = tType.split('_')[1];
+                const spec = DEPOT_SPECS[dClass];
+                const valid = !isPointInWater(wx, wy, city, 12) && !findNodeAtWorld(wx, wy, 20);
+                // Range preview ring
+                ctx.beginPath();
+                ctx.arc(wx, wy, spec.droneRange, 0, Math.PI * 2);
+                ctx.strokeStyle = valid ? spec.color : '#EF4444';
+                ctx.globalAlpha = 0.35;
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 6]);
+                ctx.stroke();
+
+                // Ghost hub body
+                ctx.globalAlpha = 0.85;
+                ctx.fillStyle = valid ? spec.color : '#EF4444';
+                ctx.beginPath();
+                ctx.arc(wx, wy, spec.radius, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (tType === 'drone') {
+                const targetDepot = findNodeAtWorld(wx, wy, 18);
+                const valid = targetDepot && targetDepot.kind === 'DEPOT';
+                ctx.strokeStyle = valid ? '#06B6D4' : '#94A3B8';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(wx, wy, 14, 0, Math.PI * 2);
+                ctx.stroke();
+            } else if (tType === 'bike' || tType === 'car') {
+                const targetLine = findLineAtWorld(wx, wy, 22);
+                ctx.fillStyle = targetLine ? targetLine.color : '#64748B';
+                ctx.globalAlpha = 0.85;
+                ctx.beginPath();
+                ctx.roundRect(wx - 13, wy - 7, 26, 14, 5);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        // 10. Render Nodes: Hauptdepots, Zwischenlager (S/L/XL) & Customer Stations
+        for (const n of state.nodes) {
+            ctx.save();
+            ctx.translate(n.x, n.y);
+
+            const isHovered = state.hover.nodeId === n.id;
+            const hoverBoost = isHovered ? 1.08 : 1.0;
+            ctx.scale(n.scale * hoverBoost, n.scale * hoverBoost);
+
+            if (n.kind === 'DEPOT') {
+                const spec = DEPOT_SPECS[n.depotType];
+                const r = n.radius;
+
+                // Soft tactile drop shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.14)';
+                ctx.beginPath();
+                ctx.arc(0, 3, r + 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = state.nightMode ? '#1E293B' : '#FFFFFF';
+                ctx.strokeStyle = spec.color;
+                ctx.lineWidth = 4.2;
+
+                if (n.depotType === 'MAIN') {
+                    drawRegularPolygon(ctx, 0, 0, r + 3, 8, Math.PI / 8);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = spec.color;
+                    drawRegularPolygon(ctx, 0, 0, r - 5, 8, Math.PI / 8);
+                    ctx.fill();
+                } else if (n.depotType === 'XL') {
+                    drawRegularPolygon(ctx, 0, 0, r + 2, 6, 0);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (n.depotType === 'L') {
+                    ctx.beginPath();
+                    ctx.roundRect(-r, -r, r * 2, r * 2, 7);
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                // Clean Geometric Label
+                ctx.fillStyle = n.depotType === 'MAIN' ? '#FFFFFF' : (state.nightMode ? '#F8FAFC' : '#1E293B');
+                ctx.font = `800 ${n.depotType === 'MAIN' ? 11 : 12}px "Plus Jakarta Sans"`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(n.depotType === 'MAIN' ? 'HQ' : n.depotType, 0, 0.5);
+
+                // Stationed Drones Badge
+                const numDrones = state.drones.filter(d => d.homeNodeId === n.id).length;
+                if (numDrones > 0) {
+                    ctx.fillStyle = '#0891B2';
+                    ctx.beginPath();
+                    ctx.arc(r * 0.78, -r * 0.78, 7.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = '800 9px "JetBrains Mono"';
+                    ctx.fillText(`${numDrones}`, r * 0.78, -r * 0.78 + 0.5);
+                }
+
+                // Stored Packages Orbiting Depot
+                const maxShow = Math.min(n.storage.length, 12);
+                for (let i = 0; i < maxShow; i++) {
+                    const pkg = n.storage[i];
+                    const a = -Math.PI / 2 + (i * 2 * Math.PI) / Math.max(6, maxShow);
+                    const px = Math.cos(a) * (r + 8.5);
+                    const py = Math.sin(a) * (r + 8.5);
+                    drawPackagePip(ctx, px, py, pkg.size, 3.8, pkg.scale || 1);
+                }
+            } else if (n.kind === 'CUSTOMER') {
+                const r = n.radius;
+                const col = n.demandType === 'S' ? '#0EA5E9' : (n.demandType === 'L' ? '#F59E0B' : '#F43F5E');
+
+                // Authentic Mini Metro Radial Crowding Pie + Pulsing Ring
+                if (n.overloadTimer > 0.01) {
+                    ctx.save();
+                    const pulse = 1 + Math.sin(performance.now() * 0.014) * (0.04 + n.overloadTimer * 0.08);
+                    ctx.scale(pulse, pulse);
+
+                    // Translucent urgency pie halo
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.16)';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.arc(0, 0, r + 13, -Math.PI / 2, -Math.PI / 2 + n.overloadTimer * Math.PI * 2);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Crisp outer countdown ring
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r + 10, -Math.PI / 2, -Math.PI / 2 + n.overloadTimer * Math.PI * 2);
+                    ctx.strokeStyle = '#EF4444';
+                    ctx.lineWidth = 4.2;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // Soft Drop Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.13)';
+                ctx.beginPath();
+                ctx.arc(0, 2.5, r + 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Iconic Bold White-Filled Geometric Station with Dark/Colored Thick Outline
+                ctx.fillStyle = state.nightMode ? '#0F172A' : '#FFFFFF';
+                ctx.strokeStyle = state.nightMode ? '#F8FAFC' : '#23272E';
+                ctx.lineWidth = 4.0;
+
+                if (n.demandType === 'S') {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (n.demandType === 'L') {
+                    ctx.beginPath();
+                    ctx.roundRect(-r, -r, r * 2, r * 2, 5.5);
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    drawRegularPolygon(ctx, 0, 0, r + 2.5, 4, 0);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                // Inner Colored Accent Dot/Letter
+                ctx.fillStyle = col;
+                ctx.font = '800 9.5px "Plus Jakarta Sans"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(n.demandType, 0, 0.5);
+
+                // Waiting Package Demand Pips neatly arranged around Station (with individual pop-in scale!)
+                for (let i = 0; i < n.waitingOrders.length; i++) {
+                    const ord = n.waitingOrders[i];
+                    const ring = i < 6 ? 0 : 1;
+                    const idxInRing = i % 6;
+                    const a = -Math.PI / 2 + (idxInRing * (Math.PI * 2)) / 6 + (ring * 0.35);
+                    const orbitR = r + 9.5 + ring * 8.5;
+                    const px = Math.cos(a) * orbitR;
+                    const py = Math.sin(a) * orbitR;
+                    drawPackagePip(ctx, px, py, ord.size, 4.5, ord.scale || 1);
+                }
+            }
+
+            ctx.restore();
+        }
+
+        // 11. Render Smooth Flying Package Transfer Arcs (Depot <-> Vehicle <-> Station)
+        for (const fp of state.flyingPackages) {
+            const t = easeInOutQuad(Math.min(1, fp.t));
+            const x = lerp(fp.fromX, fp.toX, t);
+            const arcLift = Math.sin(t * Math.PI) * 18;
+            const y = lerp(fp.fromY, fp.toY, t) - arcLift;
+            drawPackagePip(ctx, x, y, fp.size, 5.2, 1.15);
+        }
+
+        // 12. Render Ground Vehicles: Cyberbikes & Cybercars (Colored to match their Line like Mini Metro trains!)
+        for (const line of state.lines) {
+            for (const v of line.vehicles) {
+                ctx.save();
+                ctx.translate(v.x, v.y);
+                ctx.rotate(v.angle);
+                const s = (v.scale || 1) * (v.bounceScale || 1);
+                ctx.scale(s, s);
+
+                if (v.type === 'bike') {
+                    // Shadow
+                    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+                    ctx.beginPath();
+                    ctx.roundRect(-9.5, -4, 19, 10, 5);
+                    ctx.fill();
+
+                    // Sleek Line-Colored Capsule Body
+                    ctx.fillStyle = line.color;
+                    ctx.beginPath();
+                    ctx.roundRect(-9.5, -5, 19, 10, 5);
+                    ctx.fill();
+
+                    // White Windshield / Roof Cutout
+                    ctx.fillStyle = state.nightMode ? '#0F172A' : '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.roundRect(-5.5, -3, 11, 6, 3);
+                    ctx.fill();
+
+                    // Cargo Pips
+                    for (let i = 0; i < v.cargo.length; i++) {
+                        drawPackagePip(ctx, -2.5 + i * 5, 0, v.cargo[i].size, 2.8, v.cargo[i].scale || 1);
+                    }
+                } else {
+                    // Wide Heavy-Load Cybercar
+                    ctx.fillStyle = 'rgba(0,0,0,0.20)';
+                    ctx.beginPath();
+                    ctx.roundRect(-14, -6.5, 28, 15, 4.5);
+                    ctx.fill();
+
+                    ctx.fillStyle = line.color;
+                    ctx.beginPath();
+                    ctx.roundRect(-14, -7.5, 28, 15, 4.5);
+                    ctx.fill();
+
+                    // Cargo Bed
+                    ctx.fillStyle = state.nightMode ? '#0F172A' : '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.roundRect(-10.5, -5, 21, 10, 3);
+                    ctx.fill();
+
+                    for (let i = 0; i < v.cargo.length; i++) {
+                        const p = v.cargo[i];
+                        const offset = -6.5 + i * 4.5;
+                        drawPackagePip(ctx, offset, 0, p.size, p.size === 'XL' ? 4.0 : 3.1, p.scale || 1);
+                    }
+                }
+                ctx.restore();
+            }
+        }
+
+        // 13. Render Flugdrohnen (Air Layer with Soft Ground Shadow & Spinning Rotors)
+        for (const d of state.drones) {
+            for (const tr of d.trail) {
+                ctx.save();
+                ctx.fillStyle = '#06B6D4';
+                ctx.globalAlpha = Math.max(0, tr.alpha * 0.45);
+                ctx.beginPath();
+                ctx.arc(tr.x, tr.y, 2.0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
+            ctx.beginPath();
+            ctx.arc(d.x + 4, d.y + 7, 6 * (d.scale || 1), 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.translate(d.x, d.y);
+            ctx.scale(d.scale || 1, d.scale || 1);
+
+            ctx.strokeStyle = state.nightMode ? '#E2E8F0' : '#23272E';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-6, -6); ctx.lineTo(6, 6);
+            ctx.moveTo(6, -6);  ctx.lineTo(-6, 6);
+            ctx.stroke();
+
+            const rotCorners = [[-6, -6], [6, -6], [-6, 6], [6, 6]];
+            ctx.fillStyle = 'rgba(6, 182, 212, 0.30)';
+            ctx.strokeStyle = '#06B6D4';
+            ctx.lineWidth = 1.2;
+            for (const [rx, ry] of rotCorners) {
+                ctx.beginPath();
+                ctx.arc(rx, ry, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            if (d.cargo) {
+                drawPackagePip(ctx, 0, 0, 'S', 4.3, 1);
+            } else {
+                ctx.fillStyle = '#06B6D4';
+                ctx.beginPath();
+                ctx.arc(0, 0, 3.0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        // 14. Floating Feedback Whispers
+        for (const ft of state.floatingTexts) {
+            ctx.save();
+            ctx.font = '800 12px "Plus Jakarta Sans"';
+            ctx.fillStyle = ft.color;
+            ctx.globalAlpha = Math.max(0, ft.alpha);
+            ctx.textAlign = 'center';
+            ctx.fillText(ft.text, ft.x, ft.y);
+            ctx.restore();
+        }
+
+        ctx.restore();
+    }
+
+    function showFloatingText(x, y, text, color = '#F59E0B') {
+        state.floatingTexts.push({ x, y, text, color, alpha: 1.0 });
+    }
+
+    /***************************************************************************
+     * 10. UNIFIED INPUT: LINE DRAWING, UNPLUGGING & DOCK DRAG-AND-DROP
+     ***************************************************************************/
+    function findNodeAtWorld(wx, wy, hitPadding = 12) {
+        for (let i = state.nodes.length - 1; i >= 0; i--) {
+            const n = state.nodes[i];
+            if (dist(wx, wy, n.x, n.y) <= n.radius + hitPadding) return n;
+        }
+        return null;
+    }
+
+    // Check if cursor is near a Mini Metro T-Bar terminal at either end of a line
+    function findLineTerminalAtWorld(wx, wy) {
+        for (let i = 0; i < state.unlockedLines; i++) {
+            const line = state.lines[i];
+            if (!line || line.nodeIds.length < 2) continue;
+
+            const ends = [
+                { node: state.nodes.find(n => n.id === line.nodeIds[0]), neighbor: state.nodes.find(n => n.id === line.nodeIds[1]), idx: 0 },
+                { node: state.nodes.find(n => n.id === line.nodeIds[line.nodeIds.length - 1]), neighbor: state.nodes.find(n => n.id === line.nodeIds[line.nodeIds.length - 2]), idx: line.nodeIds.length - 1 }
+            ];
+            for (const end of ends) {
+                if (!end.node || !end.neighbor) continue;
+                const tbar = getTerminalTBarPoint(end.node, end.neighbor, 0);
+                if (tbar && dist(wx, wy, tbar.x, tbar.y) <= 17) {
+                    return { line, node: end.node, neighbor: end.neighbor, nodeIndex: end.idx };
+                }
+            }
+        }
+        return null;
+    }
+
+    // Check if cursor is grabbing a Connector Plug ("Verbindungsstelle") where a line docks into a station
+    function findLineConnectorAtWorld(wx, wy) {
+        let bestHit = null;
+        let bestDist = 17.5;
+
+        // Check selected line first, then all unlocked lines
+        const order = [];
+        for (let i = 0; i < state.unlockedLines; i++) {
+            if (i === state.selectedLineId) order.unshift(i);
+            else order.push(i);
+        }
+
+        for (const li of order) {
+            const line = state.lines[li];
+            if (!line || line.nodeIds.length < 2) continue;
+
+            for (let i = 0; i < line.nodeIds.length - 1; i++) {
+                const n1 = state.nodes.find(n => n.id === line.nodeIds[i]);
+                const n2 = state.nodes.find(n => n.id === line.nodeIds[i + 1]);
+                if (!n1 || !n2) continue;
+
+                const laneOffset = getSegmentParallelOffset(line.id, n1.id, n2.id);
+                const c1 = getConnectorPoint(n1, n2, laneOffset);
+                const c2 = getConnectorPoint(n2, n1, -laneOffset);
+
+                if (c2) {
+                    const d2 = dist(wx, wy, c2.x, c2.y);
+                    if (d2 < bestDist) {
+                        bestDist = d2;
+                        bestHit = { line, node: n2, neighborNode: n1, nodeIndex: i + 1, x: c2.x, y: c2.y };
+                    }
+                }
+                if (c1) {
+                    const d1 = dist(wx, wy, c1.x, c1.y);
+                    if (d1 < bestDist) {
+                        bestDist = d1;
+                        bestHit = { line, node: n1, neighborNode: n2, nodeIndex: i, x: c1.x, y: c1.y };
+                    }
+                }
+            }
+        }
+        return bestHit;
+    }
+
+    // Detailed segment hit-test so grabbing a line near a station unplugs it, and grabbing the middle inserts a stop
+    function findLineSegmentDetailAtWorld(wx, wy, maxDist = 16) {
+        let best = null;
+        let bestD = maxDist;
+
+        for (let i = 0; i < state.unlockedLines; i++) {
+            const line = state.lines[i];
+            if (!line || line.nodeIds.length < 2) continue;
+            for (let j = 0; j < line.nodeIds.length - 1; j++) {
+                const n1 = state.nodes.find(n => n.id === line.nodeIds[j]);
+                const n2 = state.nodes.find(n => n.id === line.nodeIds[j + 1]);
+                if (!n1 || !n2) continue;
+                const laneOffset = getSegmentParallelOffset(line.id, n1.id, n2.id);
+                const pts = computeMetroWaypoints(n1.x, n1.y, n2.x, n2.y, laneOffset);
+                for (let k = 0; k < pts.length - 1; k++) {
+                    const d = distToSegment(wx, wy, pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1]);
+                    if (d <= bestD) {
+                        bestD = d;
+                        best = {
+                            line,
+                            segIndex: j,
+                            n1, n2,
+                            distToN1: dist(wx, wy, n1.x, n1.y),
+                            distToN2: dist(wx, wy, n2.x, n2.y),
+                            segLen: dist(n1.x, n1.y, n2.x, n2.y)
+                        };
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    function findLineAtWorld(wx, wy, maxDist = 15) {
+        const hit = findLineSegmentDetailAtWorld(wx, wy, maxDist);
+        return hit ? hit.line : null;
+    }
+
+    // Unplug a station at `nodeIndex` from `line` and begin interactive rerouting ("von der Verbindungsstelle lösen & neu andocken")
+    function unplugStationFromLine(line, nodeIndex, wx, wy) {
+        if (!line || nodeIndex < 0 || nodeIndex >= line.nodeIds.length) return false;
+        const detachedId = line.nodeIds[nodeIndex];
+        const detachedNode = state.nodes.find(n => n.id === detachedId);
+
+        state.selectedLineId = line.id;
+        state.drag.active = true;
+        state.drag.currWorldX = wx;
+        state.drag.currWorldY = wy;
+        state.drag.snapNode = null;
+        state.drag.detachedNode = detachedNode || null;
+        canvas.classList.add('dragging-active');
+
+        if (nodeIndex === line.nodeIds.length - 1) {
+            // Unplugging the TAIL end of the line
+            const anchorId = line.nodeIds[line.nodeIds.length - 2];
+            const anchorNode = state.nodes.find(n => n.id === anchorId);
+            line.nodeIds.pop();
+            recalculateLineBridges(line);
+
+            state.drag.mode = 'reroute_end';
+            state.drag.endSide = 'tail';
+            state.drag.anchorNode = anchorNode;
+        } else if (nodeIndex === 0) {
+            // Unplugging the HEAD end of the line
+            const anchorId = line.nodeIds[1];
+            const anchorNode = state.nodes.find(n => n.id === anchorId);
+            line.nodeIds.shift();
+            recalculateLineBridges(line);
+
+            state.drag.mode = 'reroute_end';
+            state.drag.endSide = 'head';
+            state.drag.anchorNode = anchorNode;
+        } else {
+            // Unplugging a MIDDLE station on the line
+            const prevNode = state.nodes.find(n => n.id === line.nodeIds[nodeIndex - 1]);
+            const nextNode = state.nodes.find(n => n.id === line.nodeIds[nodeIndex + 1]);
+            line.nodeIds.splice(nodeIndex, 1);
+            recalculateLineBridges(line);
+
+            state.drag.mode = 'reroute_mid';
+            state.drag.insertIndex = nodeIndex;
+            state.drag.prevNode = prevNode;
+            state.drag.nextNode = nextNode;
+        }
+
+        if (detachedNode) {
+            detachedNode.scaleVel = 2.2;
+            state.ripples.push({ x: detachedNode.x, y: detachedNode.y, r: detachedNode.radius, maxR: 36, color: line.color, alpha: 0.75 });
+        }
+        sfx.playDisconnect();
+        updateAllUI();
+        return true;
+    }
+
+    function connectNodesOnLine(line, nodeA, nodeB) {
+        if (!line || !nodeA || !nodeB || nodeA.id === nodeB.id) return false;
+        const city = currentCity();
+
+        // If dragging back onto the adjacent node at the end of a line, shorten/retract the segment
+        if (line.nodeIds.length >= 2) {
+            if (line.nodeIds[line.nodeIds.length - 1] === nodeA.id && line.nodeIds[line.nodeIds.length - 2] === nodeB.id) {
+                line.nodeIds.pop();
+                recalculateLineBridges(line);
+                nodeB.scaleVel = 1.8;
+                sfx.playDisconnect();
+                updateAllUI();
+                return true;
+            }
+            if (line.nodeIds[0] === nodeA.id && line.nodeIds[1] === nodeB.id) {
+                line.nodeIds.shift();
+                recalculateLineBridges(line);
+                nodeB.scaleVel = 1.8;
+                sfx.playDisconnect();
+                updateAllUI();
+                return true;
+            }
+        }
+
+        const pts = computeMetroWaypoints(nodeA.x, nodeA.y, nodeB.x, nodeB.y, 0);
+        const crossesWater = pts.some((p, idx) => idx < pts.length - 1 && doesSegmentCrossWater(p[0], p[1], pts[idx + 1][0], pts[idx + 1][1], city));
+
+        if (crossesWater && state.inventory.bridges <= 0) {
+            showFloatingText((nodeA.x + nodeB.x) / 2, (nodeA.y + nodeB.y) / 2, 'Keine Brücke übrig (Drohne nutzen!)', '#EF4444');
+            return false;
+        }
+
+        let modified = false;
+        if (line.nodeIds.length === 0) {
+            line.nodeIds.push(nodeA.id, nodeB.id);
+            modified = true;
+        } else if (line.nodeIds.length === 1 && line.nodeIds[0] === nodeA.id) {
+            line.nodeIds.push(nodeB.id);
+            modified = true;
+        } else if (line.nodeIds[line.nodeIds.length - 1] === nodeA.id && !line.nodeIds.includes(nodeB.id)) {
+            line.nodeIds.push(nodeB.id);
+            modified = true;
+        } else if (line.nodeIds[0] === nodeA.id && !line.nodeIds.includes(nodeB.id)) {
+            line.nodeIds.unshift(nodeB.id);
+            modified = true;
+        } else if (line.nodeIds.includes(nodeA.id) && !line.nodeIds.includes(nodeB.id)) {
+            const idx = line.nodeIds.indexOf(nodeA.id);
+            line.nodeIds.splice(idx + 1, 0, nodeB.id);
+            modified = true;
+        } else if (!line.nodeIds.includes(nodeA.id) && line.nodeIds.includes(nodeB.id)) {
+            const idx = line.nodeIds.indexOf(nodeB.id);
+            line.nodeIds.splice(idx + 1, 0, nodeA.id);
+            modified = true;
+        }
+
+        if (modified) {
+            recalculateLineBridges(line);
+            nodeB.scaleVel = 2.6;
+            sfx.playConnect(crossesWater, line.id);
+
+            if (!state.tutorialCompleted) {
+                state.tutorialCompleted = true;
+                document.getElementById('uiHintBanner').classList.add('opacity-0');
+            }
+
+            if (line.vehicles.length === 0) {
+                if (state.inventory.car > 0 && (nodeB.demandType === 'XL' || nodeA.demandType === 'XL')) {
+                    addVehicleToLine(line, 'car', false);
+                } else if (state.inventory.bike > 0) {
+                    addVehicleToLine(line, 'bike', false);
+                } else if (state.inventory.car > 0) {
+                    addVehicleToLine(line, 'car', false);
+                }
+            }
+            updateAllUI();
+        }
+        return modified;
+    }
+
+    // Place a token (Depot, Drone, Bike, Car) at world coordinates (from Dock Drag-and-Drop OR Click)
+    function applyTokenAtWorld(tokenType, wx, wy) {
+        const clickedNode = findNodeAtWorld(wx, wy, 16);
+        const clickedLine = findLineAtWorld(wx, wy, 20);
+
+        if (tokenType.startsWith('depot_')) {
+            const depotClass = tokenType.split('_')[1];
+            if (state.inventory[tokenType] <= 0) return false;
+            if (isPointInWater(wx, wy, currentCity(), 12)) {
+                showFloatingText(wx, wy, 'Nur auf Festland baubar', '#EF4444');
+                return false;
+            }
+            if (clickedNode) {
+                showFloatingText(wx, wy, 'Zu nah an Station', '#F59E0B');
+                return false;
+            }
+            state.inventory[tokenType]--;
+            const newDepot = createDepotNode(depotClass, wx, wy);
+            state.nodes.push(newDepot);
+            sfx.playPlaceDepot(depotClass);
+
+            if (state.inventory.drone > 0) {
+                stationDroneAtNode(newDepot, false);
+            }
+            openNodeInspector(newDepot);
+            setActiveTool('route');
+            updateAllUI();
+            return true;
+        }
+
+        if (tokenType === 'drone') {
+            if (clickedNode && clickedNode.kind === 'DEPOT') {
+                stationDroneAtNode(clickedNode, false);
+                openNodeInspector(clickedNode);
+                setActiveTool('route');
+                return true;
+            }
+            showFloatingText(wx, wy, 'Auf ein Depot (HQ / S / L / XL) ziehen!', '#06B6D4');
+            return false;
+        }
+
+        if (tokenType === 'bike' || tokenType === 'car') {
+            const targetLine = clickedLine || state.lines[state.selectedLineId];
+            if (targetLine && targetLine.nodeIds.length >= 2) {
+                if (addVehicleToLine(targetLine, tokenType, false, wx, wy)) {
+                    setActiveTool('route');
+                    return true;
+                }
+            } else {
+                showFloatingText(wx, wy, 'Auf eine aktive Linie ziehen!', '#F59E0B');
+            }
+            return false;
+        }
+        return false;
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+        sfx.init();
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const w = screenToWorld(sx, sy);
+
+        state.drag.currWorldX = w.x;
+        state.drag.currWorldY = w.y;
+        state.drag.snapNode = null;
+        state.drag.detachedNode = null;
+
+        // If a dock token tool was clicked/selected, try applying it at click position
+        if (state.activeTool !== 'route') {
+            if (applyTokenAtWorld(state.activeTool, w.x, w.y)) return;
+            setActiveTool('route');
+        }
+
+        // 1. PRIORITY 1: Grabbing a Connector Plug ("Verbindungsstelle") immediately unplugs the line from that station!
+        const connectorHit = findLineConnectorAtWorld(w.x, w.y);
+        if (connectorHit) {
+            document.getElementById('nodeInspector').classList.add('hidden');
+            unplugStationFromLine(connectorHit.line, connectorHit.nodeIndex, w.x, w.y);
+            return;
+        }
+
+        // 2. PRIORITY 2: Grabbing a Mini Metro T-Bar terminal cap (extends outward, or unplugs if pulled back!)
+        const terminalHit = findLineTerminalAtWorld(w.x, w.y);
+        if (terminalHit) {
+            state.selectedLineId = terminalHit.line.id;
+            state.drag.active = true;
+            state.drag.mode = 'draw_line';
+            state.drag.startNode = terminalHit.node;
+            state.drag.canPullBackUnplug = true;
+            state.drag.pullBackNodeIndex = terminalHit.nodeIndex;
+            state.drag.pullBackNeighbor = terminalHit.neighbor;
+            canvas.classList.add('dragging-active');
+            updateAllUI();
+            return;
+        }
+
+        const clickedNode = findNodeAtWorld(w.x, w.y, 10);
+        const segHit = findLineSegmentDetailAtWorld(w.x, w.y, 15);
+
+        // 3. PRIORITY 3: Grabbing a Line Segment (unplugs nearest endpoint or bends middle of segment!)
+        if (segHit && !clickedNode) {
+            const line = segHit.line;
+            state.selectedLineId = line.id;
+            document.getElementById('nodeInspector').classList.add('hidden');
+
+            const isFirstSeg = segHit.segIndex === 0;
+            const isLastSeg  = segHit.segIndex === line.nodeIds.length - 2;
+
+            // If grabbed near the tail station (or on the outer half of the last segment), unplug the tail station!
+            if (isLastSeg && (segHit.distToN2 < 52 || segHit.distToN2 < segHit.distToN1 * 0.95)) {
+                unplugStationFromLine(line, line.nodeIds.length - 1, w.x, w.y);
+                return;
+            }
+            // If grabbed near the head station, unplug the head station!
+            if (isFirstSeg && (segHit.distToN1 < 52 || (line.nodeIds.length > 2 && segHit.distToN1 < segHit.distToN2 * 0.85))) {
+                unplugStationFromLine(line, 0, w.x, w.y);
+                return;
+            }
+            // If grabbed near an intermediate station on the line, unplug that intermediate station!
+            if (segHit.distToN1 < 36 && segHit.segIndex > 0) {
+                unplugStationFromLine(line, segHit.segIndex, w.x, w.y);
+                return;
+            }
+            if (segHit.distToN2 < 36 && segHit.segIndex + 1 < line.nodeIds.length - 1) {
+                unplugStationFromLine(line, segHit.segIndex + 1, w.x, w.y);
+                return;
+            }
+
+            // Otherwise, grabbed in the middle of a segment -> stretch elastic loop between n1 and n2 to dock onto a new station!
+            state.drag.active = true;
+            state.drag.mode = 'reroute_mid';
+            state.drag.insertIndex = segHit.segIndex + 1;
+            state.drag.prevNode = segHit.n1;
+            state.drag.nextNode = segHit.n2;
+            state.drag.detachedNode = null;
+            canvas.classList.add('dragging-active');
+            updateAllUI();
+            return;
+        }
+
+        // 4. PRIORITY 4: Grabbing a Station or Depot
+        if (clickedNode) {
+            state.drag.active = true;
+            state.drag.mode = 'draw_line';
+            state.drag.startNode = clickedNode;
+            state.drag.canPullBackUnplug = false;
+            canvas.classList.add('dragging-active');
+
+            // Select a line that ends at clickedNode, or contains clickedNode, or an empty line
+            let curLine = state.lines[state.selectedLineId];
+            if (curLine.nodeIds.length > 0 && !curLine.nodeIds.includes(clickedNode.id)) {
+                const terminalLine = state.lines.slice(0, state.unlockedLines).find(l =>
+                    l.nodeIds[0] === clickedNode.id || l.nodeIds[l.nodeIds.length - 1] === clickedNode.id
+                );
+                const passingLine = state.lines.slice(0, state.unlockedLines).find(l =>
+                    l.nodeIds.includes(clickedNode.id)
+                );
+                const emptyLine = state.lines.slice(0, state.unlockedLines).find(l => l.nodeIds.length === 0);
+                if (terminalLine) {
+                    state.selectedLineId = terminalLine.id;
+                } else if (passingLine) {
+                    state.selectedLineId = passingLine.id;
+                } else if (emptyLine) {
+                    state.selectedLineId = emptyLine.id;
+                }
+                curLine = state.lines[state.selectedLineId];
+                updateAllUI();
+            }
+
+            // If clickedNode is an endpoint of curLine, allow pulling backwards toward the neighbor to unplug clickedNode!
+            if (curLine && curLine.nodeIds.length >= 2) {
+                if (curLine.nodeIds[curLine.nodeIds.length - 1] === clickedNode.id) {
+                    state.drag.canPullBackUnplug = true;
+                    state.drag.pullBackNodeIndex = curLine.nodeIds.length - 1;
+                    state.drag.pullBackNeighbor = state.nodes.find(n => n.id === curLine.nodeIds[curLine.nodeIds.length - 2]);
+                } else if (curLine.nodeIds[0] === clickedNode.id) {
+                    state.drag.canPullBackUnplug = true;
+                    state.drag.pullBackNodeIndex = 0;
+                    state.drag.pullBackNeighbor = state.nodes.find(n => n.id === curLine.nodeIds[1]);
+                }
+            }
+
+            if (clickedNode.kind === 'DEPOT') {
+                openNodeInspector(clickedNode);
+            } else {
+                document.getElementById('nodeInspector').classList.add('hidden');
+            }
+        } else {
+            document.getElementById('nodeInspector').classList.add('hidden');
+        }
+    });
+
+    window.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const w = screenToWorld(sx, sy);
+
+        state.hover.worldX = w.x;
+        state.hover.worldY = w.y;
+
+        if (!state.drag.active) {
+            const hConn = findLineConnectorAtWorld(w.x, w.y);
+            const hTerm = findLineTerminalAtWorld(w.x, w.y);
+            const hNode = findNodeAtWorld(w.x, w.y, 10);
+            const hLine = findLineAtWorld(w.x, w.y, 14);
+            state.hover.connector = hConn;
+            state.hover.nodeId = hNode ? hNode.id : null;
+            state.hover.lineId = hConn ? hConn.line.id : (hTerm ? hTerm.line.id : (hLine ? hLine.id : null));
+            canvas.classList.toggle('hover-interactive', Boolean(hConn || hTerm || hNode || hLine));
+            return;
+        }
+
+        state.drag.currWorldX = w.x;
+        state.drag.currWorldY = w.y;
+        const line = state.lines[state.selectedLineId];
+
+        // 1. If in `draw_line` from a terminal station and player drags backwards along the line -> automatically unplug!
+        if (state.drag.mode === 'draw_line' && state.drag.canPullBackUnplug && state.drag.startNode && state.drag.pullBackNeighbor) {
+            const st = state.drag.startNode;
+            const nb = state.drag.pullBackNeighbor;
+            const dFromStart = dist(w.x, w.y, st.x, st.y);
+            if (dFromStart > st.radius + 8) {
+                const toNeighborAngle = Math.atan2(nb.y - st.y, nb.x - st.x);
+                const dragAngle = Math.atan2(w.y - st.y, w.x - st.x);
+                const angleDiff = Math.abs(((dragAngle - toNeighborAngle + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+                // If pulling within 58 degrees of the incoming line direction, unplug `startNode`!
+                if (angleDiff < 1.02) {
+                    unplugStationFromLine(line, state.drag.pullBackNodeIndex, w.x, w.y);
+                    return;
+                }
+            }
+        }
+
+        // 2. Handle `reroute_end` (holding an unplugged line end and looking for a station to dock onto)
+        if (state.drag.mode === 'reroute_end' && state.drag.anchorNode) {
+            const hoverNode = findNodeAtWorld(w.x, w.y, 16);
+            if (hoverNode && hoverNode.id !== state.drag.anchorNode.id && !line.nodeIds.includes(hoverNode.id)) {
+                state.drag.snapNode = hoverNode;
+            } else {
+                state.drag.snapNode = null;
+            }
+            return;
+        }
+
+        // 3. Handle `reroute_mid` (stretching an intermediate connection to dock onto a station)
+        if (state.drag.mode === 'reroute_mid' && state.drag.prevNode && state.drag.nextNode) {
+            const hoverNode = findNodeAtWorld(w.x, w.y, 16);
+            if (hoverNode &&
+                hoverNode.id !== state.drag.prevNode.id &&
+                hoverNode.id !== state.drag.nextNode.id &&
+                !line.nodeIds.includes(hoverNode.id)) {
+                state.drag.snapNode = hoverNode;
+            } else {
+                state.drag.snapNode = null;
+            }
+            return;
+        }
+
+        // 4. Standard `draw_line` mode
+        if (state.drag.mode === 'draw_line' && state.drag.startNode) {
+            const hoverNode = findNodeAtWorld(w.x, w.y, 13);
+            state.drag.snapNode = (hoverNode && hoverNode.id !== state.drag.startNode.id) ? hoverNode : null;
+            if (hoverNode && hoverNode.id !== state.drag.startNode.id) {
+                if (connectNodesOnLine(line, state.drag.startNode, hoverNode)) {
+                    state.drag.startNode = hoverNode;
+                    state.drag.canPullBackUnplug = false;
+                    state.drag.snapNode = null;
+                }
+            }
+        }
+    });
+
+    window.addEventListener('pointerup', (e) => {
+        if (!state.drag.active) return;
+        const line = state.lines[state.selectedLineId];
+        const city = currentCity();
+
+        if (state.drag.mode === 'dock_token' && state.drag.tokenType) {
+            const rect = canvas.getBoundingClientRect();
+            const sx = e.clientX - rect.left;
+            const sy = e.clientY - rect.top;
+            if (sy < window.innerHeight - 95) {
+                const w = screenToWorld(sx, sy);
+                applyTokenAtWorld(state.drag.tokenType, w.x, w.y);
+            }
+        } else if (state.drag.mode === 'reroute_end' && line) {
+            const target = state.drag.snapNode;
+            const anchor = state.drag.anchorNode;
+            if (target && anchor && target.id !== anchor.id && !line.nodeIds.includes(target.id)) {
+                // Check if new segment crosses water
+                const pts = computeMetroWaypoints(anchor.x, anchor.y, target.x, target.y, 0);
+                const crossesWater = pts.some((p, idx) => idx < pts.length - 1 && doesSegmentCrossWater(p[0], p[1], pts[idx + 1][0], pts[idx + 1][1], city));
+                if (crossesWater && state.inventory.bridges <= 0) {
+                    showFloatingText(target.x, target.y - 18, 'Keine Brücke verfügbar!', '#EF4444');
+                } else {
+                    if (state.drag.endSide === 'tail') {
+                        line.nodeIds.push(target.id);
+                    } else {
+                        line.nodeIds.unshift(target.id);
+                    }
+                    recalculateLineBridges(line);
+                    target.scaleVel = 2.8;
+                    state.ripples.push({ x: target.x, y: target.y, r: target.radius, maxR: 42, color: line.color, alpha: 0.9 });
+                    sfx.playConnect(crossesWater, line.id);
+                }
+            }
+            // If after releasing, the line has fewer than 2 stations left, dissolve the stub and return vehicles to dock
+            if (line.nodeIds.length < 2) {
+                clearLine(line);
+            } else {
+                recalculateLineBridges(line);
+                updateAllUI();
+            }
+        } else if (state.drag.mode === 'reroute_mid' && line) {
+            const target = state.drag.snapNode;
+            const prev = state.drag.prevNode;
+            const next = state.drag.nextNode;
+            if (target && prev && next && !line.nodeIds.includes(target.id)) {
+                line.nodeIds.splice(state.drag.insertIndex, 0, target.id);
+                recalculateLineBridges(line);
+                if (state.inventory.bridges < 0) {
+                    // Revert if not enough bridges
+                    line.nodeIds.splice(state.drag.insertIndex, 1);
+                    if (state.drag.detachedNode) {
+                        line.nodeIds.splice(state.drag.insertIndex, 0, state.drag.detachedNode.id);
+                    }
+                    recalculateLineBridges(line);
+                    showFloatingText(target.x, target.y - 18, 'Keine Brücke verfügbar!', '#EF4444');
+                } else {
+                    target.scaleVel = 2.8;
+                    state.ripples.push({ x: target.x, y: target.y, r: target.radius, maxR: 42, color: line.color, alpha: 0.9 });
+                    sfx.playConnect(false, line.id);
+                }
+            } else {
+                // Released in empty space -> direct connection between prev and next remains!
+                recalculateLineBridges(line);
+                if (state.inventory.bridges < 0 && state.drag.detachedNode) {
+                    line.nodeIds.splice(state.drag.insertIndex, 0, state.drag.detachedNode.id);
+                    recalculateLineBridges(line);
+                    showFloatingText(prev.x, prev.y - 18, 'Keine Brücke für Direktverbindung!', '#EF4444');
+                }
+            }
+            updateAllUI();
+        }
+
+        state.drag.active = false;
+        state.drag.mode = null;
+        state.drag.tokenType = null;
+        state.drag.startNode = null;
+        state.drag.anchorNode = null;
+        state.drag.snapNode = null;
+        state.drag.detachedNode = null;
+        state.drag.canPullBackUnplug = false;
+        canvas.classList.remove('dragging-active');
+    });
+
+    // Enable Direct Drag-and-Drop AND Click on Bottom Dock Circular Tokens!
+    document.querySelectorAll('.dock-item').forEach(btn => {
+        btn.addEventListener('pointerdown', (e) => {
+            const tool = btn.dataset.tool;
+            if (!tool || (state.inventory[tool] !== undefined && state.inventory[tool] <= 0)) return;
+            e.stopPropagation();
+            sfx.init();
+
+            setActiveTool(tool);
+            const rect = canvas.getBoundingClientRect();
+            const w = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+            state.drag.active = true;
+            state.drag.mode = 'dock_token';
+            state.drag.tokenType = tool;
+            state.drag.currWorldX = w.x;
+            state.drag.currWorldY = w.y;
+        });
+    });
+
+    /***************************************************************************
+     * 11. UI UPDATES, PROGRESSIVE DOCK TOKENS & WEEKLY UPGRADE CARDS
+     ***************************************************************************/
+    function setActiveTool(toolName) {
+        state.activeTool = state.activeTool === toolName && toolName !== 'route' ? 'route' : toolName;
+        document.querySelectorAll('.dock-item').forEach(btn => {
+            btn.classList.toggle('active-tool', btn.dataset.tool === state.activeTool);
+        });
+
+        const hintBanner = document.getElementById('uiHintBanner');
+        const hintEl = document.getElementById('uiHintText');
+        if (state.activeTool === 'route') {
+            if (state.tutorialCompleted) hintBanner.classList.add('opacity-0');
+        } else {
+            const hints = {
+                depot_S:  'Ziehe oder klicke auf Festland für ein S-Zwischenlager (6× S)',
+                depot_L:  'Ziehe oder klicke auf Festland für ein L-Zwischenlager (12× S/L)',
+                depot_XL: 'Ziehe oder klicke auf Festland für einen XL-Mega-Hub (24× S/L/XL)',
+                drone:    'Klicke auf ein Depot (HQ / S / L / XL), um die Flugdrohne zu stationieren',
+                bike:     'Klicke auf eine farbige Linie, um das schnelle Cyberbike zuzuweisen',
+                car:      'Klicke auf eine farbige Linie, um das Schwerlast-Cybercar zuzuweisen'
+            };
+            hintEl.textContent = hints[state.activeTool] || '';
+            hintBanner.classList.remove('opacity-0');
+        }
+    }
+
+    function openNodeInspector(node) {
+        if (!node || node.kind !== 'DEPOT') return;
+        state.inspectedNodeId = node.id;
+        const panel = document.getElementById('nodeInspector');
+        panel.classList.remove('hidden');
+
+        const spec = DEPOT_SPECS[node.depotType];
+        const badge = document.getElementById('inspBadge');
+        badge.textContent = node.depotType === 'MAIN' ? 'HQ' : node.depotType;
+        badge.style.backgroundColor = spec.color;
+
+        document.getElementById('inspTitle').textContent = spec.label;
+        document.getElementById('inspSubtitle').textContent = `${node.storage.length} / ${node.capacity} Pakete`;
+
+        const sCount = node.storage.filter(p => p.size === 'S').length;
+        const lCount = node.storage.filter(p => p.size === 'L').length;
+        const xlCount = node.storage.filter(p => p.size === 'XL').length;
+        const droneCount = state.drones.filter(d => d.homeNodeId === node.id).length;
+
+        document.getElementById('inspBody').innerHTML = `
+            <div class="flex items-center justify-between py-1 border-b border-black/5 dark:border-white/5">
+                <span class="opacity-65">Lagerbestand:</span>
+                <span class="font-mono-num font-bold">S:${sCount} · L:${lCount} · XL:${xlCount}</span>
+            </div>
+            <div class="flex items-center justify-between py-1">
+                <span class="opacity-65">Flugdrohnen:</span>
+                <span class="font-mono-num font-bold text-cyan-500">${droneCount}</span>
+            </div>
+        `;
+
+        document.getElementById('btnInspRemoveNode').style.display = node.depotType === 'MAIN' ? 'none' : 'block';
+    }
+
+    document.getElementById('btnCloseInspector').addEventListener('click', () => {
+        state.inspectedNodeId = null;
+        document.getElementById('nodeInspector').classList.add('hidden');
+    });
+
+    document.getElementById('btnInspAddDrone').addEventListener('click', () => {
+        const node = state.nodes.find(n => n.id === state.inspectedNodeId);
+        if (node) {
+            stationDroneAtNode(node, false);
+            openNodeInspector(node);
+        }
+    });
+
+    document.getElementById('btnInspRemoveNode').addEventListener('click', () => {
+        const nodeIdx = state.nodes.findIndex(n => n.id === state.inspectedNodeId);
+        if (nodeIdx === -1) return;
+        const node = state.nodes[nodeIdx];
+        if (node.depotType === 'MAIN') return;
+
+        state.inventory[`depot_${node.depotType}`]++;
+        for (let i = state.drones.length - 1; i >= 0; i--) {
+            if (state.drones[i].homeNodeId === node.id) {
+                state.drones.splice(i, 1);
+                state.inventory.drone++;
+            }
+        }
+        for (const l of state.lines) {
+            const idx = l.nodeIds.indexOf(node.id);
+            if (idx !== -1) {
+                l.nodeIds.splice(idx, 1);
+                if (l.nodeIds.length < 2) {
+                    clearLine(l);
+                } else {
+                    recalculateLineBridges(l);
+                }
+            }
+        }
+        state.nodes.splice(nodeIdx, 1);
+        state.inspectedNodeId = null;
+        document.getElementById('nodeInspector').classList.add('hidden');
+        sfx.playDisconnect();
+        updateAllUI();
+    });
+
+    function clearLine(line) {
+        if (!line) return;
+        for (const v of line.vehicles) {
+            state.inventory[v.type]++;
+        }
+        line.vehicles = [];
+        line.nodeIds = [];
+        recalculateLineBridges(line);
+        sfx.playDisconnect();
+        updateAllUI();
+    }
+
+    document.getElementById('btnClearSelectedLine').addEventListener('click', () => {
+        clearLine(state.lines[state.selectedLineId]);
+    });
+
+    function updateTokenUI(toolKey, badgeId) {
+        const count = state.inventory[toolKey];
+        if (count > 0) state.everUnlocked[toolKey] = true;
+
+        const badge = document.getElementById(badgeId);
+        if (badge) badge.textContent = count;
+
+        const btn = document.querySelector(`[data-tool="${toolKey}"]`);
+        if (btn) {
+            // Keep UI minimalist at start: hide tokens that haven't been unlocked yet!
+            btn.classList.toggle('token-locked', !state.everUnlocked[toolKey]);
+            btn.classList.toggle('token-depleted', state.everUnlocked[toolKey] && count <= 0);
+        }
+    }
+
+    function updateAllUI() {
+        document.getElementById('uiScore').textContent = state.score;
+
+        updateTokenUI('bike', 'badgeBike');
+        updateTokenUI('car', 'badgeCar');
+        updateTokenUI('drone', 'badgeDrone');
+        updateTokenUI('depot_S', 'badgeDepotS');
+        updateTokenUI('depot_L', 'badgeDepotL');
+        updateTokenUI('depot_XL', 'badgeDepotXL');
+
+        document.getElementById('badgeBridges').textContent = state.inventory.bridges;
+        document.getElementById('tokenBridgesWrap').classList.toggle('token-depleted', state.inventory.bridges <= 0);
+
+        // Render Unlocked Line Color Tokens (Mini Metro style)
+        const container = document.getElementById('linePillsContainer');
+        container.innerHTML = '';
+        for (let i = 0; i < state.unlockedLines; i++) {
+            const line = state.lines[i];
+            const btn = document.createElement('button');
+            const isSelected = line.id === state.selectedLineId;
+            const isUsed = line.nodeIds.length >= 2;
+            btn.className = `line-token font-mono-num text-[11px] font-extrabold text-white ${isSelected ? 'selected' : ''} ${!isUsed ? 'unused' : ''}`;
+            btn.style.backgroundColor = line.color;
+            btn.style.color = line.color;
+            btn.innerHTML = `<span class="text-white">${line.vehicles.length || ''}</span>`;
+            btn.title = `${line.name} (${line.vehicles.length} Fahrzeuge)`;
+
+            btn.addEventListener('mouseenter', () => { state.hoveredLineId = line.id; });
+            btn.addEventListener('mouseleave', () => { state.hoveredLineId = null; });
+            btn.addEventListener('click', () => {
+                state.selectedLineId = line.id;
+                if (state.activeTool === 'bike' || state.activeTool === 'car') {
+                    addVehicleToLine(line, state.activeTool, false);
+                    setActiveTool('route');
+                }
+                updateAllUI();
+            });
+            container.appendChild(btn);
+        }
+
+        if (state.inspectedNodeId) {
+            const n = state.nodes.find(x => x.id === state.inspectedNodeId);
+            if (n) openNodeInspector(n);
+        }
+    }
+
+    function updateClockUI() {
+        const days = ['MO', 'DI', 'MI', 'DO', 'FR', 'SA', 'SO'];
+        const dayIdx = (state.dayCount - 1) % 7;
+        document.getElementById('uiDayName').textContent = days[dayIdx];
+
+        // Smooth circular week-progress arc around clock
+        const weekFraction = (dayIdx + state.timeOfDay / 24) / 7;
+        const circumference = 110;
+        const offset = circumference * (1 - weekFraction);
+        document.getElementById('uiWeekArc').style.strokeDashoffset = `${offset.toFixed(1)}`;
+
+        const hourDeg = ((state.timeOfDay % 12) / 12) * 360;
+        const minDeg = ((state.timeOfDay % 1) * 360);
+        document.getElementById('clockHandHour').style.transform = `rotate(${hourDeg}deg)`;
+        document.getElementById('clockHandMin').style.transform = `rotate(${minDeg}deg)`;
+    }
+
+    // Authentic Mini Motorways Weekly Upgrade Choices (Progressive Freedom!)
+    function getWeeklyUpgradeChoices() {
+        const pool = [];
+
+        // Option A: New Logistics Line + Cyberbike (if < 7 lines unlocked)
+        if (state.unlockedLines < LINE_COLORS.length) {
+            const nextColor = LINE_COLORS[state.unlockedLines];
+            pool.push({
+                title: 'Neue Linie & Bike',
+                subtitle: `+1 ${nextColor.name} & +1 Cyberbike`,
+                desc: 'Erschließe einen neuen unabhängigen Stadtkorridor.',
+                badgeColor: nextColor.hex,
+                iconText: '+Linie',
+                apply: () => {
+                    state.unlockedLines = Math.min(LINE_COLORS.length, state.unlockedLines + 1);
+                    state.inventory.bike += 1;
+                    state.selectedLineId = state.unlockedLines - 1;
+                }
+            });
+        }
+
+        // Option B: Heavy Cargo Fleet (Cybercars + XL or L Hub)
+        pool.push({
+            title: 'Schwerlast-Flotte',
+            subtitle: state.weekCount <= 2 ? '+1 Cybercar & +1 L-Zwischenlager' : '+2 Cybercars & +1 XL-Mega-Hub',
+            desc: 'Transportiert XL-Schwerlastpakete (1×), L-Pakete (2×) oder 4× S-Pakete.',
+            badgeColor: '#8B5CF6',
+            iconText: 'CAR',
+            apply: () => {
+                state.everUnlocked.car = true;
+                if (state.weekCount <= 2) {
+                    state.inventory.car += 1;
+                    state.everUnlocked.depot_L = true;
+                    state.inventory.depot_L += 1;
+                } else {
+                    state.inventory.car += 2;
+                    state.everUnlocked.depot_XL = true;
+                    state.inventory.depot_XL += 1;
+                }
+            }
+        });
+
+        // Option C: Air Bridge (Flugdrohnen + S-Zwischenlager)
+        pool.push({
+            title: 'Luftbrücke',
+            subtitle: '+2 Flugdrohnen & +1 S-Zwischenlager',
+            desc: 'Fliegt S-Pakete direkt über Flüsse und entlastet deine Bodenlinien.',
+            badgeColor: '#06B6D4',
+            iconText: 'AIR',
+            apply: () => {
+                state.everUnlocked.depot_S = true;
+                state.inventory.drone += 2;
+                state.inventory.depot_S += 1;
+            }
+        });
+
+        // Option D: Express Expansion (Cyberbikes + Bridges)
+        pool.push({
+            title: 'Express & Brücken',
+            subtitle: '+2 Cyberbikes & +2 Brücken',
+            desc: 'Hohe Frequenz für S- und L-Pakete inklusive Flussquerungen.',
+            badgeColor: '#10B981',
+            iconText: 'BIKE',
+            apply: () => {
+                state.inventory.bike += 2;
+                state.inventory.bridges += 2;
+            }
+        });
+
+        // Always prioritize offering a new line or Cybercar early on, then shuffle 2 choices
+        const shuffled = pool.sort(() => Math.random() - 0.5);
+        return shuffled.slice(0, 2);
+    }
+
+    function triggerWeeklyUpgradeModal() {
+        const prevSpeed = state.gameSpeed || 1;
+        setGameSpeed(0);
+        sfx.playWeeklyChord();
+
+        document.getElementById('upgradeWeekTitle').textContent = `Woche ${state.weekCount}`;
+        const container = document.getElementById('upgradeCardsContainer');
+        container.innerHTML = '';
+
+        const choices = getWeeklyUpgradeChoices();
+        choices.forEach((pkg, idx) => {
+            const card = document.createElement('button');
+            card.style.animationDelay = `${idx * 90}ms`;
+            card.className = 'dpc-pill upgrade-card-anim rounded-[32px] p-6 text-center flex flex-col items-center justify-between hover:scale-105 active:scale-95 cursor-pointer';
+            card.innerHTML = `
+                <div class="w-20 h-20 rounded-full flex items-center justify-center text-white font-extrabold text-lg shadow-lg mb-4" style="background:${pkg.badgeColor}">
+                    ${pkg.iconText}
+                </div>
+                <div class="text-xs font-extrabold uppercase tracking-wider opacity-55 mb-1">${pkg.title}</div>
+                <h3 class="text-lg font-extrabold leading-snug mb-2">${pkg.subtitle}</h3>
+                <p class="text-xs opacity-70 leading-relaxed mb-5">${pkg.desc}</p>
+                <div class="px-5 py-2 rounded-full text-xs font-extrabold text-white shadow" style="background:${pkg.badgeColor}">
+                    Auswählen
+                </div>
+            `;
+            card.addEventListener('click', () => {
+                pkg.apply();
+                document.getElementById('upgradeModal').classList.add('hidden');
+                updateAllUI();
+                setGameSpeed(prevSpeed);
+            });
+            container.appendChild(card);
+        });
+
+        document.getElementById('upgradeModal').classList.remove('hidden');
+    }
+
+    function triggerGameOver(overloadedNode) {
+        setGameSpeed(0);
+        const city = currentCity();
+        document.getElementById('goTitle').textContent = `Netz überlastet in ${city.name}`;
+        document.getElementById('goSubtitle').textContent =
+            `Eine ${overloadedNode.demandType}-Station hat zu lange auf ihre Pakete gewartet.`;
+        document.getElementById('goScore').textContent = state.score;
+        document.getElementById('goDays').textContent = state.dayCount;
+        document.getElementById('goDepots').textContent = state.nodes.filter(n => n.kind === 'DEPOT').length;
+        document.getElementById('gameOverModal').classList.remove('hidden');
+    }
+
+    document.getElementById('btnContinueEndless').addEventListener('click', () => {
+        state.endlessMode = true;
+        for (const n of state.nodes) {
+            if (n.kind === 'CUSTOMER') n.overloadTimer = 0;
+        }
+        state.everUnlocked.car = true;
+        state.inventory.drone += 2;
+        state.inventory.car += 1;
+        state.inventory.bridges += 2;
+        document.getElementById('gameOverModal').classList.add('hidden');
+        updateAllUI();
+        setGameSpeed(1);
+    });
+
+    document.getElementById('btnRestartCity').addEventListener('click', () => {
+        document.getElementById('gameOverModal').classList.add('hidden');
+        initCity(state.cityIndex);
+    });
+
+    /***************************************************************************
+     * 12. 30 CITIES MODAL & MINI-MAP VECTOR PREVIEW GENERATOR
+     ***************************************************************************/
+    function buildCityModalGrid(filterText = '') {
+        const container = document.getElementById('cityGridContainer');
+        container.innerHTML = '';
+        const q = filterText.trim().toLowerCase();
+
+        CITIES.forEach((city, idx) => {
+            if (q && !city.name.toLowerCase().includes(q) &&
+                !city.country.toLowerCase().includes(q) &&
+                !city.riverName.toLowerCase().includes(q)) {
+                return;
+            }
+
+            const card = document.createElement('button');
+            const isCurrent = idx === state.cityIndex;
+            card.className = `dpc-pill rounded-3xl p-3.5 text-left flex items-center gap-3.5 hover:scale-[1.02] active:scale-95 transition-transform ${isCurrent ? 'ring-2 ring-amber-500' : ''}`;
+
+            const miniCanvas = document.createElement('canvas');
+            miniCanvas.width = 110;
+            miniCanvas.height = 72;
+            miniCanvas.className = 'w-[92px] h-[60px] rounded-2xl flex-shrink-0 border border-black/10 dark:border-white/10';
+            renderMiniMapPreview(miniCanvas, city);
+
+            const info = document.createElement('div');
+            info.className = 'min-w-0 flex-1';
+            info.innerHTML = `
+                <div class="flex items-center justify-between gap-1">
+                    <span class="font-extrabold text-sm truncate">${city.name}</span>
+                    <span class="text-[10px] font-mono-num opacity-55">${city.country}</span>
+                </div>
+                <div class="text-[11px] opacity-65 truncate mt-0.5">${city.riverName}</div>
+            `;
+
+            card.appendChild(miniCanvas);
+            card.appendChild(info);
+            card.addEventListener('click', () => {
+                document.getElementById('cityModal').classList.add('hidden');
+                initCity(idx);
+            });
+            container.appendChild(card);
+        });
+    }
+
+    function renderMiniMapPreview(miniCanvas, city) {
+        const mctx = miniCanvas.getContext('2d');
+        const pal = state.nightMode ? city.night : city.day;
+        mctx.fillStyle = pal.land;
+        mctx.fillRect(0, 0, miniCanvas.width, miniCanvas.height);
+
+        mctx.save();
+        mctx.scale(miniCanvas.width / WORLD_W, miniCanvas.height / WORLD_H);
+        mctx.fillStyle = pal.water;
+        mctx.strokeStyle = pal.water;
+        mctx.lineCap = 'round';
+        mctx.lineJoin = 'round';
+
+        for (const poly of city.waterPolys) {
+            drawRoundedPolygon(mctx, poly);
+        }
+        for (const r of city.rivers) {
+            mctx.lineWidth = r.width * 1.15;
+            drawSmoothPolyline(mctx, r.pts, 30);
+        }
+        mctx.restore();
+    }
+
+    /***************************************************************************
+     * 13. THEME, SPEED CONTROLS & MAIN ANIMATION LOOP
+     ***************************************************************************/
+    function applyThemeColors() {
+        const city = currentCity();
+        const pal = state.nightMode ? city.night : city.day;
+        document.documentElement.style.setProperty('--bg-land', pal.land);
+        document.documentElement.style.setProperty('--bg-water', pal.water);
+        if (state.nightMode) {
+            document.documentElement.style.setProperty('--text-main', '#F1F5F9');
+            document.documentElement.style.setProperty('--panel-bg', 'rgba(15, 23, 42, 0.86)');
+            document.documentElement.style.setProperty('--panel-border', 'rgba(255, 255, 255, 0.12)');
+            document.documentElement.style.setProperty('--token-bg', '#1E293B');
+            document.getElementById('iconSun').classList.remove('hidden');
+            document.getElementById('iconMoon').classList.add('hidden');
+        } else {
+            document.documentElement.style.setProperty('--text-main', '#23272E');
+            document.documentElement.style.setProperty('--panel-bg', 'rgba(255, 255, 255, 0.88)');
+            document.documentElement.style.setProperty('--panel-border', 'rgba(35, 39, 46, 0.08)');
+            document.documentElement.style.setProperty('--token-bg', '#FFFFFF');
+            document.getElementById('iconSun').classList.add('hidden');
+            document.getElementById('iconMoon').classList.remove('hidden');
+        }
+    }
+
+    function setGameSpeed(spd) {
+        state.gameSpeed = spd;
+        document.querySelectorAll('.speed-btn').forEach(btn => {
+            const active = Number(btn.dataset.speed) === spd;
+            btn.classList.toggle('bg-amber-500', active);
+            btn.classList.toggle('text-white', active);
+            btn.classList.toggle('shadow-sm', active);
+        });
+    }
+
+    document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.addEventListener('click', () => setGameSpeed(Number(btn.dataset.speed)));
+    });
+
+    document.getElementById('btnClockTogglePause').addEventListener('click', () => {
+        setGameSpeed(state.gameSpeed === 0 ? 1 : 0);
+    });
+
+    document.getElementById('btnToggleTheme').addEventListener('click', () => {
+        state.nightMode = !state.nightMode;
+        applyThemeColors();
+    });
+
+    document.getElementById('btnToggleSound').addEventListener('click', () => {
+        sfx.enabled = !sfx.enabled;
+        document.getElementById('iconSoundOn').classList.toggle('hidden', !sfx.enabled);
+        document.getElementById('iconSoundOff').classList.toggle('hidden', sfx.enabled);
+    });
+
+    document.getElementById('btnOpenCityModal').addEventListener('click', () => {
+        buildCityModalGrid(document.getElementById('citySearchInput').value);
+        document.getElementById('cityModal').classList.remove('hidden');
+    });
+
+    document.getElementById('btnCloseCityModal').addEventListener('click', () => {
+        document.getElementById('cityModal').classList.add('hidden');
+    });
+
+    document.getElementById('citySearchInput').addEventListener('input', (e) => {
+        buildCityModalGrid(e.target.value);
+    });
+
+    document.getElementById('btnOpenHelp').addEventListener('click', () => {
+        document.getElementById('helpModal').classList.remove('hidden');
+    });
+    document.getElementById('btnCloseHelp').addEventListener('click', () => {
+        document.getElementById('helpModal').classList.add('hidden');
+    });
+    document.getElementById('btnStartFromHelp').addEventListener('click', () => {
+        document.getElementById('helpModal').classList.add('hidden');
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
+            e.preventDefault();
+            setGameSpeed(state.gameSpeed === 0 ? 1 : 0);
+        } else if (e.key === 'Escape') {
+            setActiveTool('route');
+            document.getElementById('cityModal').classList.add('hidden');
+            document.getElementById('helpModal').classList.add('hidden');
+            document.getElementById('nodeInspector').classList.add('hidden');
+        }
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+
+    let lastFrameTime = performance.now();
+    function gameLoop(now) {
+        const rawDt = Math.min(0.05, (now - lastFrameTime) / 1000);
+        lastFrameTime = now;
+        updateSimulation(rawDt);
+        renderGame();
+        requestAnimationFrame(gameLoop);
+    }
+
+    window.onload = function () {
+        resizeCanvas();
+        initCity(0);
+        requestAnimationFrame(gameLoop);
+    };
+    </script>
+</body>
+</html>
+
+
