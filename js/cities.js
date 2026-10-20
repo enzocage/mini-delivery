@@ -1,4 +1,4 @@
-// 1. 30 REAL WORLD CITIES & CORE SPECS
+// 1. 54 REAL WORLD CITIES (30 Classic + 8 Chinese + 16 International) & CORE SPECS
 const CITIES = [
         {
             id: 'berlin', name: 'Berlin', country: 'Deutschland', coords: '52.52°N 13.40°E',
@@ -436,6 +436,394 @@ const CITIES = [
                 // Guanabara Bay & Atlantic Ocean around Rio and Niterói
                 [[455, -30], [765, -30], [725, 265], [645, 445], [825, 535], [1030, 555], [1030, 680], [-30, 680], [-30, 565], [345, 535], [515, 435], [445, 265]]
             ]
+        },
+
+        // --- 8 CHINESE METROPOLISES ---
+        {
+            id: 'shanghai', name: 'Shanghai', country: 'China', coords: '31.23°N 121.47°E',
+            riverName: 'Huangpu-Fluss (Pudong & Bund) & Suzhou Creek',
+            day: { land: '#F5F2EB', water: '#AEDCF7', park: '#E1EFD7' },
+            night: { land: '#131722', water: '#08223A', park: '#17241E' },
+            rivers: [
+                // Huangpu River iconic Lujiazui / Bund S-bend flowing South to North-East
+                { width: 64, pts: [[380, 680], [495, 535], [555, 405], [485, 285], [565, 175], [725, 65], [860, -30]] },
+                // Suzhou Creek meandering from West into the Huangpu at the Bund
+                { width: 24, pts: [[-40, 290], [135, 310], [265, 265], [375, 295], [485, 285]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'peking', name: 'Peking (Beijing)', country: 'China', coords: '39.90°N 116.40°E',
+            riverName: 'Shichahai-Seen, Kaiserkanal & Tonghui-Fluss',
+            day: { land: '#F7F2E8', water: '#B3DDF6', park: '#E3EFD6' },
+            night: { land: '#161821', water: '#0A2238', park: '#18241D' },
+            rivers: [
+                // Grand Canal / North Moat & Tonghui River
+                { width: 28, pts: [[180, -30], [320, 145], [465, 215], [645, 335], [890, 395], [1040, 445]] },
+                // Yongding / Southern Moat channel
+                { width: 32, pts: [[-40, 475], [235, 465], [525, 455], [765, 520], [980, 680]] },
+                // Liangma River NE
+                { width: 20, pts: [[485, 225], [695, 195], [960, 140]] }
+            ],
+            waterPolys: [
+                // Shichahai, Beihai & Zhongnanhai Imperial Lakes
+                [[415, 225], [465, 220], [475, 365], [420, 375]]
+            ]
+        },
+        {
+            id: 'shenzhen', name: 'Shenzhen', country: 'China', coords: '22.54°N 114.05°E',
+            riverName: 'Shenzhen-Bucht (Shenzhen Bay) & Shenzhen-Fluss',
+            day: { land: '#F4F3EB', water: '#A6E1F6', park: '#DDF0D6' },
+            night: { land: '#131822', water: '#07253B', park: '#16261E' },
+            rivers: [
+                // Shenzhen River winding along the southern border
+                { width: 38, pts: [[455, 505], [615, 465], [775, 490], [950, 435], [1040, 415]] },
+                // Dasha River flowing South into Shenzhen Bay
+                { width: 24, pts: [[295, 95], [315, 265], [285, 425]] }
+            ],
+            waterPolys: [
+                // Shenzhen Bay & Qianhai Bay in the South-West
+                [[-30, 385], [165, 395], [345, 420], [465, 495], [395, 595], [220, 680], [-30, 680]]
+            ]
+        },
+        {
+            id: 'guangzhou', name: 'Guangzhou', country: 'China', coords: '23.12°N 113.26°E',
+            riverName: 'Perlfluss (Zhujiang) & Haizhu-Insel',
+            day: { land: '#F6F2EA', water: '#ABDDF7', park: '#E0EFD5' },
+            night: { land: '#141822', water: '#082339', park: '#17251D' },
+            rivers: [
+                // Pearl River Front Channel past Shamian & Canton Tower
+                { width: 54, pts: [[160, 95], [255, 250], [385, 315], [615, 325], [845, 365], [1040, 415]] },
+                // Pearl River Back Channel wrapping around Haizhu Island
+                { width: 46, pts: [[255, 250], [295, 435], [495, 475], [745, 455], [845, 365]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'wuhan', name: 'Wuhan', country: 'China', coords: '30.59°N 114.30°E',
+            riverName: 'Jangtsekiang, Han-Fluss & Ostsee (Donghu)',
+            day: { land: '#F5F1E9', water: '#B0DCF8', park: '#E1EFD6' },
+            night: { land: '#141721', water: '#09223A', park: '#17241D' },
+            rivers: [
+                // Mighty Yangtze River cutting SW to NE through Wuhan (Three Towns)
+                { width: 78, pts: [[140, 680], [315, 515], [485, 355], [645, 195], [820, -30]] },
+                // Han River joining the Yangtze from the West (separating Hankou & Hanyang)
+                { width: 36, pts: [[-40, 320], [185, 345], [345, 330], [485, 355]] }
+            ],
+            waterPolys: [
+                // East Lake (Donghu) in Wuchang
+                [[645, 335], [795, 295], [885, 385], [835, 495], [685, 465]]
+            ]
+        },
+        {
+            id: 'chongqing', name: 'Chongqing', country: 'China', coords: '29.56°N 106.55°E',
+            riverName: 'Jangtsekiang & Jialing-Zusammenfluss (Yuzhong)',
+            day: { land: '#F4F0E8', water: '#A9D8F4', park: '#DFEDD4' },
+            night: { land: '#131620', water: '#082038', park: '#16231C' },
+            rivers: [
+                // Yangtze River sweeping along south of Yuzhong Peninsula and turning North-East
+                { width: 68, pts: [[120, 620], [335, 485], [585, 415], [695, 285], [825, 140], [980, -30]] },
+                // Jialing River winding from NW and merging with Yangtze at Chaotianmen (point 640, 350)
+                { width: 52, pts: [[140, -30], [265, 145], [385, 265], [545, 275], [655, 330]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'chengdu', name: 'Chengdu', country: 'China', coords: '30.57°N 104.06°E',
+            riverName: 'Jinjiang (Fu- & Nan-Fluss) & Shahe-Ring',
+            day: { land: '#F6F3EC', water: '#B5E1F8', park: '#E2F1D8' },
+            night: { land: '#151922', water: '#0A2439', park: '#18261E' },
+            rivers: [
+                // Fu River (North-East arc around central Chengdu) & Southern Jinjiang
+                { width: 34, pts: [[245, -30], [395, 135], [585, 215], [615, 365], [535, 475], [565, 680]] },
+                // Nan River (West-South arc merging at Hejiangting)
+                { width: 30, pts: [[395, 135], [295, 265], [325, 415], [535, 475]] },
+                // Shahe River eastern corridor
+                { width: 22, pts: [[645, -30], [755, 210], [785, 445], [695, 680]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'hangzhou', name: 'Hangzhou', country: 'China', coords: '30.27°N 120.15°E',
+            riverName: 'Qiantang-Fluss, Westsee (Xihu) & Kaiserkanal',
+            day: { land: '#F5F3EB', water: '#ADE0F6', park: '#DEF0D6' },
+            night: { land: '#141821', water: '#082439', park: '#16251E' },
+            rivers: [
+                // Mighty Qiantang River sweeping SW to NE across Hangzhou
+                { width: 76, pts: [[180, 680], [415, 535], [615, 435], [825, 315], [1040, 225]] },
+                // Beijing-Hangzhou Grand Canal from the North
+                { width: 28, pts: [[465, -30], [495, 165], [575, 295], [615, 435]] }
+            ],
+            waterPolys: [
+                // Iconic West Lake (Xihu) west of the city center
+                [[235, 245], [355, 235], [385, 345], [335, 425], [225, 395]]
+            ]
+        },
+
+        // --- 16 ADDITIONAL INTERNATIONAL METROPOLISES ---
+        {
+            id: 'buenosaires', name: 'Buenos Aires', country: 'Argentinien', coords: '34.60°S 58.38°W',
+            riverName: 'Río de la Plata, Puerto Madero & Riachuelo',
+            day: { land: '#F6F2EA', water: '#AED9F6', park: '#E2EFD6' },
+            night: { land: '#141821', water: '#092138', park: '#18241D' },
+            rivers: [
+                // Riachuelo (Matanza River) meandering along the southern edge (La Boca)
+                { width: 34, pts: [[-40, 565], [215, 535], [445, 515], [665, 475]] },
+                // Puerto Madero dock channel
+                { width: 24, pts: [[615, 255], [635, 415]] }
+            ],
+            waterPolys: [
+                // Wide Río de la Plata estuary along the North-East coastline
+                [[385, -30], [1030, -30], [1030, 680], [755, 680], [665, 475], [645, 255], [515, 115]]
+            ]
+        },
+        {
+            id: 'toronto', name: 'Toronto', country: 'Kanada', coords: '43.65°N 79.38°W',
+            riverName: 'Lake Ontario, Toronto Islands & Don River',
+            day: { land: '#F4F1EA', water: '#B0DCF8', park: '#E1EED6' },
+            night: { land: '#131720', water: '#092239', park: '#17231D' },
+            rivers: [
+                // Humber River in the West
+                { width: 26, pts: [[145, -30], [175, 235], [195, 485]] },
+                // Don River in the East
+                { width: 28, pts: [[685, -30], [615, 225], [585, 435]] }
+            ],
+            waterPolys: [
+                // Lake Ontario along the southern waterfront & Toronto Harbour
+                [[-30, 515], [225, 475], [445, 445], [645, 425], [855, 365], [1030, 325], [1030, 680], [-30, 680]]
+            ]
+        },
+        {
+            id: 'montreal', name: 'Montréal', country: 'Kanada', coords: '45.50°N 73.56°W',
+            riverName: 'Sankt-Lorenz-Strom & Rivière des Prairies',
+            day: { land: '#F5F2EB', water: '#AFDAF7', park: '#E2EFD7' },
+            night: { land: '#141721', water: '#092138', park: '#17241D' },
+            rivers: [
+                // Mighty Saint Lawrence River sweeping SW to NE past Old Montreal & Île Sainte-Hélène
+                { width: 78, pts: [[120, 680], [365, 545], [585, 425], [745, 265], [895, -30]] },
+                // Rivière des Prairies separating Montreal Island from Laval in the North-West
+                { width: 44, pts: [[-40, 265], [195, 175], [445, 85], [665, -30]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'mexikostadt', name: 'Mexiko-Stadt', country: 'Mexiko', coords: '19.43°N 99.13°W',
+            riverName: 'Xochimilco-Kanäle, Gran Canal & Lago de Texcoco',
+            day: { land: '#F8F2E7', water: '#B3DEF5', park: '#E4EFD5' },
+            night: { land: '#171821', water: '#0A2337', park: '#19241D' },
+            rivers: [
+                // Gran Canal del Desagüe running South to North-East
+                { width: 28, pts: [[485, 535], [545, 355], [615, 185], [685, -30]] },
+                // Xochimilco & Chalco historic chinampa canals in the South
+                { width: 26, pts: [[185, 515], [385, 535], [585, 525], [775, 555]] },
+                // Río Churubusco / Río de los Remedios link
+                { width: 22, pts: [[195, 365], [395, 385], [545, 355]] }
+            ],
+            waterPolys: [
+                // Nabor Carrillo / Lago de Texcoco basin in the East
+                [[775, 215], [915, 205], [945, 365], [795, 385]]
+            ]
+        },
+        {
+            id: 'bangkok', name: 'Bangkok', country: 'Thailand', coords: '13.75°N 100.50°E',
+            riverName: 'Chao Phraya (Bang-Kachao-Schleife) & Khlongs',
+            day: { land: '#F7F3EA', water: '#ACDEF5', park: '#E0F0D5' },
+            night: { land: '#151822', water: '#082338', park: '#17251D' },
+            rivers: [
+                // Chao Phraya River with the famous Bang Kachao oxbow loop
+                { width: 56, pts: [[445, -30], [465, 145], [395, 265], [445, 395], [595, 365], [645, 465], [515, 535], [545, 680]] },
+                // Khlong Saen Saep east-west canal
+                { width: 20, pts: [[425, 255], [645, 245], [895, 215]] },
+                // Khlong Bangkok Noi in Thonburi
+                { width: 22, pts: [[215, 195], [395, 265]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'osaka', name: 'Osaka', country: 'Japan', coords: '34.69°N 135.50°E',
+            riverName: 'Yodo-Fluss, Dōtonbori, Nakanoshima & Bucht von Osaka',
+            day: { land: '#F5F2EB', water: '#B0DFF8', park: '#E2EFD7' },
+            night: { land: '#141721', water: '#092239', park: '#18241E' },
+            rivers: [
+                // Wide Yodo River (Yodogawa) flowing NE to Osaka Bay
+                { width: 58, pts: [[845, -30], [615, 145], [395, 245], [185, 315]] },
+                // Ōkawa & Nakanoshima / Dōtonbori central loop
+                { width: 30, pts: [[645, 125], [595, 285], [475, 355], [265, 395]] },
+                // Yamato River in the South
+                { width: 36, pts: [[945, 555], [615, 545], [295, 555]] }
+            ],
+            waterPolys: [
+                // Osaka Bay along the Western port edge
+                [[-30, 215], [195, 285], [285, 425], [315, 680], [-30, 680]]
+            ]
+        },
+        {
+            id: 'taipeh', name: 'Taipeh', country: 'Taiwan', coords: '25.03°N 121.56°E',
+            riverName: 'Tamsui-Fluss, Keelung-Fluss & Xindian-Fluss',
+            day: { land: '#F5F2EA', water: '#ACDEF7', park: '#DFEFD6' },
+            night: { land: '#141822', water: '#082339', park: '#17251E' },
+            rivers: [
+                // Tamsui River & Xindian River framing the west and south of Taipei Basin
+                { width: 56, pts: [[235, -30], [315, 165], [345, 355], [465, 495], [645, 680]] },
+                // Keelung River winding from East through Songshan & Shilin into Tamsui River
+                { width: 36, pts: [[980, 265], [775, 285], [615, 225], [465, 175], [315, 165]] },
+                // Dahan River SW tributary
+                { width: 32, pts: [[165, 680], [285, 515], [345, 355]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'hanoi', name: 'Hanoi', country: 'Vietnam', coords: '21.02°N 105.83°E',
+            riverName: 'Roter Fluss (Sông Hồng) & Westsee (Hồ Tây)',
+            day: { land: '#F7F2E9', water: '#B1DCF6', park: '#E1EFD5' },
+            night: { land: '#151821', water: '#092238', park: '#18241D' },
+            rivers: [
+                // Mighty Red River (Sông Hồng) curving NW to SE across Hanoi
+                { width: 72, pts: [[215, -30], [445, 115], [615, 275], [695, 455], [775, 680]] },
+                // Đuống River branching East
+                { width: 36, pts: [[555, 215], [785, 195], [1040, 225]] },
+                // Tô Lịch River through western Hanoi
+                { width: 20, pts: [[365, 255], [345, 435], [455, 595]] }
+            ],
+            waterPolys: [
+                // West Lake (Hồ Tây) just west of the Red River bend
+                [[365, 145], [495, 155], [515, 265], [395, 275]]
+            ]
+        },
+        {
+            id: 'manila', name: 'Manila', country: 'Philippinen', coords: '14.59°N 120.98°E',
+            riverName: 'Manilabucht, Pasig-Fluss & Laguna de Bay',
+            day: { land: '#F6F2EA', water: '#A8DFF7', park: '#E1F0D6' },
+            night: { land: '#141822', water: '#08233A', park: '#17251E' },
+            rivers: [
+                // Pasig River connecting Manila Bay to Marikina & Laguna de Bay
+                { width: 38, pts: [[285, 345], [455, 335], [615, 365], [765, 445]] },
+                // Marikina River flowing from the North
+                { width: 28, pts: [[695, -30], [665, 185], [615, 365]] }
+            ],
+            waterPolys: [
+                // Manila Bay along the Western coastline
+                [[-30, -30], [225, -30], [295, 215], [305, 425], [215, 680], [-30, 680]],
+                // Laguna de Bay in the South-East
+                [[745, 435], [1030, 395], [1030, 680], [695, 680]]
+            ]
+        },
+        {
+            id: 'jakarta', name: 'Jakarta', country: 'Indonesien', coords: '6.20°S 106.84°E',
+            riverName: 'Javasee-Bucht, Ciliwung & Banjir-Kanal',
+            day: { land: '#F6F2E9', water: '#AAE0F6', park: '#E0EFD5' },
+            night: { land: '#141821', water: '#082439', park: '#17251D' },
+            rivers: [
+                // Ciliwung River flowing South to North into Jakarta Bay
+                { width: 32, pts: [[515, 680], [525, 455], [495, 275], [465, 135]] },
+                // Western Flood Canal (Banjir Kanal Barat)
+                { width: 28, pts: [[495, 395], [345, 325], [295, 145]] },
+                // Eastern Flood Canal (Banjir Kanal Timur)
+                { width: 30, pts: [[645, 525], [755, 345], [795, 155]] }
+            ],
+            waterPolys: [
+                // Jakarta Bay (Java Sea) across the Northern shoreline
+                [[-30, -30], [1030, -30], [1030, 165], [745, 165], [465, 145], [215, 155], [-30, 125]]
+            ]
+        },
+        {
+            id: 'melbourne', name: 'Melbourne', country: 'Australien', coords: '37.81°S 144.96°E',
+            riverName: 'Yarra River, Docklands & Port Phillip Bay',
+            day: { land: '#F5F2EB', water: '#ADE0F8', park: '#E1EFD7' },
+            night: { land: '#141721', water: '#09233A', park: '#17241E' },
+            rivers: [
+                // Yarra River winding from East through Melbourne CBD & Docklands to Hobson's Bay
+                { width: 42, pts: [[1040, 235], [795, 275], [615, 335], [455, 325], [315, 365], [245, 445]] },
+                // Maribyrnong River from the North-West
+                { width: 30, pts: [[165, -30], [225, 195], [275, 365]] }
+            ],
+            waterPolys: [
+                // Port Phillip Bay (Hobson's Bay & St Kilda) in the South-West
+                [[-30, 445], [255, 435], [385, 515], [515, 680], [-30, 680]]
+            ]
+        },
+        {
+            id: 'lagos', name: 'Lagos', country: 'Nigeria', coords: '6.52°N 3.37°E',
+            riverName: 'Lagune von Lagos, Five Cowrie Creek & Atlantik',
+            day: { land: '#F7F2E8', water: '#A9DEF6', park: '#E1EFD5' },
+            night: { land: '#151821', water: '#082339', park: '#18241D' },
+            rivers: [
+                // Lagoon channel & Five Cowrie Creek separating Mainland, Lagos Island & Victoria Island
+                { width: 58, pts: [[645, 195], [495, 325], [465, 475], [445, 620]] },
+                { width: 34, pts: [[485, 425], [695, 435], [895, 415]] },
+                // Badagry Creek West
+                { width: 40, pts: [[-40, 445], [235, 455], [465, 475]] }
+            ],
+            waterPolys: [
+                // Lagos Lagoon in the North-East
+                [[585, -30], [1030, -30], [1030, 295], [695, 265], [565, 165]],
+                // Gulf of Guinea (Atlantic Ocean) along the Southern bar beach
+                [[-30, 585], [1030, 565], [1030, 680], [-30, 680]]
+            ]
+        },
+        {
+            id: 'nairobi', name: 'Nairobi', country: 'Kenia', coords: '1.29°S 36.82°E',
+            riverName: 'Nairobi River, Ngong River & Mathare River',
+            day: { land: '#F7F3E9', water: '#B2DEF6', park: '#DFF0D4' },
+            night: { land: '#161820', water: '#0A2338', park: '#17251C' },
+            rivers: [
+                // Nairobi River flowing West to East across the capital
+                { width: 32, pts: [[-40, 295], [225, 315], [485, 305], [745, 265], [1040, 215]] },
+                // Mathare / Gitathuru River in the North merging East
+                { width: 24, pts: [[95, 115], [365, 165], [625, 195], [825, 245]] },
+                // Ngong River in the South-East
+                { width: 26, pts: [[145, 515], [445, 475], [725, 415], [945, 295]] }
+            ],
+            waterPolys: []
+        },
+        {
+            id: 'athen', name: 'Athen', country: 'Griechenland', coords: '37.98°N 23.72°E',
+            riverName: 'Saronischer Golf, Hafen von Piräus & Kifisos',
+            day: { land: '#F8F3E8', water: '#A6DCF8', park: '#E5F0D7' },
+            night: { land: '#171822', water: '#08223B', park: '#19241E' },
+            rivers: [
+                // Kifisos River flowing N to S into Phaleron Bay
+                { width: 28, pts: [[345, -30], [325, 215], [305, 475]] },
+                // Ilisos stream past central Athens
+                { width: 20, pts: [[665, 165], [515, 315], [365, 475]] }
+            ],
+            waterPolys: [
+                // Saronic Gulf & Port of Piraeus in the South-West
+                [[-30, 435], [195, 445], [365, 475], [535, 545], [685, 680], [-30, 680]]
+            ]
+        },
+        {
+            id: 'kopenhagen', name: 'Kopenhagen', country: 'Dänemark', coords: '55.67°N 12.56°E',
+            riverName: 'Inderhavnen, Öresund, Christianshavn & Seen',
+            day: { land: '#F4F1EA', water: '#AEDAF7', park: '#E1EED6' },
+            night: { land: '#131720', water: '#092139', park: '#17231D' },
+            rivers: [
+                // Inderhavnen & Sydhavnen separating Zealand (City Center) from Amager
+                { width: 54, pts: [[645, 145], [555, 315], [485, 485], [425, 680]] },
+                // The Lakes (Søerne: Sankt Jørgens Sø, Peblinge Sø, Sortedams Sø) arc
+                { width: 28, pts: [[365, 395], [385, 255], [485, 155]] },
+                // Christianshavns Kanal
+                { width: 18, pts: [[565, 285], [635, 355], [515, 425]] }
+            ],
+            waterPolys: [
+                // Øresund Strait in the North-East
+                [[615, -30], [1030, -30], [1030, 415], [825, 295], [645, 165]]
+            ]
+        },
+        {
+            id: 'warschau', name: 'Warschau', country: 'Polen', coords: '52.22°N 21.01°E',
+            riverName: 'Weichsel (Wisła) & Żerań-Kanal',
+            day: { land: '#F5F1E9', water: '#B4DCF6', park: '#E2EED6' },
+            night: { land: '#141720', water: '#0A2138', park: '#18231D' },
+            rivers: [
+                // Mighty Vistula River (Wisła) sweeping SE to NW between Śródmieście and Praga
+                { width: 66, pts: [[635, 680], [575, 515], [515, 355], [445, 185], [335, -30]] },
+                // Żerań Canal in the North-East (Białołęka / Praga Północ)
+                { width: 24, pts: [[445, 185], [635, 115], [845, -30]] },
+                // Czerniakowski Port channel
+                { width: 20, pts: [[535, 425], [485, 495]] }
+            ],
+            waterPolys: []
         }
     ];
 

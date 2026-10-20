@@ -68,7 +68,7 @@ const I18N = {
         insp_remove: 'Dismantle',
 
         // Cities Modal
-        cities_badge: '30 Metropolises',
+        cities_badge: '54 Metropolises',
         cities_title: 'Choose Your City',
         cities_search: 'Search city or river...',
 
@@ -222,7 +222,7 @@ const I18N = {
         insp_add_drone: '+ Drohne',
         insp_remove: 'Abbauen',
 
-        cities_badge: '30 Metropolen',
+        cities_badge: '54 Metropolen',
         cities_title: 'Wähle deine Stadt',
         cities_search: 'Stadt oder Fluss suchen...',
 
@@ -371,7 +371,7 @@ const I18N = {
         insp_add_drone: '+ Drone',
         insp_remove: 'Démonter',
 
-        cities_badge: '30 Métropoles',
+        cities_badge: '54 Métropoles',
         cities_title: 'Choisissez Votre Ville',
         cities_search: 'Rechercher une ville ou un fleuve...',
 
@@ -520,7 +520,7 @@ const I18N = {
         insp_add_drone: '+ Dron',
         insp_remove: 'Desmontar',
 
-        cities_badge: '30 Metrópolis',
+        cities_badge: '54 Metrópolis',
         cities_title: 'Elige Tu Ciudad',
         cities_search: 'Buscar ciudad o río...',
 
@@ -669,7 +669,7 @@ const I18N = {
         insp_add_drone: '+ 部署无人机',
         insp_remove: '拆除回收',
 
-        cities_badge: '全球 30 座大都市',
+        cities_badge: '全球 54 座大都市',
         cities_title: '选择你的城市',
         cities_search: '搜索城市或河流...',
 

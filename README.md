@@ -2,7 +2,7 @@
 
 [![Play Live](https://img.shields.io/badge/Play-Mini%20Delivery-F59E0B?style=for-the-badge&logo=github)](https://enzocage.github.io/mini-delivery/)
 [![Languages](https://img.shields.io/badge/Languages-EN%20%7C%20DE%20%7C%20FR%20%7C%20ES%20%7C%20%E4%B8%AD%E6%96%87-2563EB?style=for-the-badge)](#multilingual-support-en--de--fr--es--中文)
-[![Cities](https://img.shields.io/badge/World%20Metropolises-30%20Cities-10B981?style=for-the-badge)](#30-real-world-metropolises)
+[![Cities](https://img.shields.io/badge/World%20Metropolises-54%20Cities-10B981?style=for-the-badge)](#54-real-world-metropolises)
 [![Audio](https://img.shields.io/badge/Audio-Procedural%20Synth%20%2B%20Enzo%20Cage%20OST-8B5CF6?style=for-the-badge)](#procedural-audio--background-music)
 
 > **coding: felix schmidt ([www.felixschmidt.org](https://www.felixschmidt.org)) · music: enzo cage**
@@ -117,31 +117,17 @@ You can also deep-link directly into a specific language via URL query parameter
 ## 🎵 Procedural Audio & Background Music
 
 - **Procedural Web Audio Synthesizer ([`js/audio.js`](js/audio.js)):** Every package pickup, delivery (`S` / `L` / `XL`), bridge construction, station spawn, and weekly upgrade chord generates harmonic pentatonic/C-major-9th sine & triangle tones in real time (inspired by Disasterpeace's *Mini Metro* audio design).
-- **Optional Background Soundtrack (`♪` Button):** Click the musical note icon in the top-left utility bar to toggle the ambient electronic background track **`Enzo Cage – Bright`** (`https://www.enzocage.de/mp3/enzo_cage_sinus/enzo_cage_bright.mp3`), composed by **Felix Schmidt**.
+- **Optional Background Soundtrack (`♪` Button):** Click the musical note icon in the top-left utility bar to toggle the ambient electronic background track **`Enzo Cage – Bright`** (`https://www.enzocage.de/mp3/enzo_cage_sinus/enzo_cage_bright.mp3`), composed by **Enzo Cage**.
 
 ---
 
-## 🌍 30 Real-World Metropolises
+## 🌍 54 Real-World Metropolises (incl. 8 Chinese & 16 New Global Cities)
 
 Every city features custom Day & Night cartographic color palettes and normalized vector river/bay polygons (`[0..1000] × [0..650]`):
 
-| # | City | Country | Waterway / Coastline | # | City | Country | Waterway / Coastline |
-| :-: | :--- | :--- | :--- | :-: | :--- | :--- | :--- |
-| 1 | **Berlin** | Germany | Spree & Landwehrkanal | 16 | **Budapest** | Hungary | Danube & Margaret Island |
-| 2 | **Paris** | France | Seine & Île de la Cité | 17 | **Warsaw** | Poland | Vistula (Wisła) |
-| 3 | **London** | UK | River Thames (Isle of Dogs) | 18 | **Lisbon** | Portugal | Tagus Estuary (Tejo) |
-| 4 | **New York** | USA | Hudson, East River & Bay | 19 | **Dublin** | Ireland | River Liffey & Dublin Bay |
-| 5 | **Tokyo** | Japan | Sumida, Arakawa & Tokyo Bay | 20 | **Stockholm** | Sweden | Lake Mälaren & Archipelago |
-| 6 | **Hamburg** | Germany | Elbe, Norderelbe & Alster | 21 | **Istanbul** | Turkey | Bosphorus & Golden Horn |
-| 7 | **Frankfurt** | Germany | Main & Osthafen | 22 | **Cairo** | Egypt | Nile & Gezira Island |
-| 8 | **Munich** | Germany | Isar & Museumsinsel | 23 | **Dubai** | UAE | Dubai Creek & Persian Gulf |
-| 9 | **Cologne** | Germany | Rhine (Rheinbogen) | 24 | **Mumbai** | India | Arabian Sea & Thane Creek |
-| 10 | **Vienna** | Austria | Danube & Donaukanal | 25 | **Bangkok** | Thailand | Chao Phraya Meander |
-| 11 | **Zurich** | Switzerland | Limmat, Sihl & Lake Zurich | 26 | **Singapore** | Singapore | Singapore River & Marina Bay |
-| 12 | **Amsterdam** | Netherlands | IJ & Grachtengürtel | 27 | **Seoul** | South Korea | Han River (Hangang) |
-| 13 | **Venice** | Italy | Canal Grande & Giudecca | 28 | **Shanghai** | China | Huangpu & Suzhou Creek |
-| 14 | **Rome** | Italy | Tiber & Isola Tiberina | 29 | **Hong Kong** | China | Victoria Harbour |
-| 15 | **Prague** | Czechia | Vltava (Moldau) | 30 | **Sydney / SF / Chicago / Rio** | Global | Port Jackson, Golden Gate, Chicago River, Guanabara Bay |
+- **30 Classic Metropolises:** Berlin, Munich, Hamburg, Vienna, Zurich, Cologne, Frankfurt, Paris, London, Amsterdam, Venice, Barcelona, Rome, Lisbon, Prague, Stockholm, Istanbul, Cairo, Cape Town, Dubai, Mumbai, Singapore, Hong Kong, Tokyo, Seoul, Sydney, New York City, San Francisco, Chicago, Rio de Janeiro.
+- **8 Chinese Metropolises:** Shanghai (Huangpu & Suzhou Creek), Beijing / Peking (Shichahai & Grand Canal), Shenzhen (Shenzhen Bay & River), Guangzhou (Pearl River & Haizhu Island), Wuhan (Yangtze, Han River & East Lake), Chongqing (Yangtze & Jialing Confluence), Chengdu (Jinjiang & Shahe Ring), Hangzhou (Qiantang River, West Lake & Grand Canal).
+- **16 International Metropolises:** Buenos Aires, Toronto, Montréal, Mexico City, Bangkok, Osaka, Taipei, Hanoi, Manila, Jakarta, Melbourne, Lagos, Nairobi, Athens, Copenhagen, Warsaw.
 
 ---
 
