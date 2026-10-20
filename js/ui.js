@@ -338,7 +338,7 @@ function triggerGameOver(overloadedNode) {
         document.getElementById('btnInlineRestart').addEventListener('click', (e) => {
             e.stopPropagation();
             statusBar.classList.add('hidden');
-            initCity(state.cityIndex);
+            openStartScreen(true);
         });
     }
 }
@@ -365,7 +365,8 @@ function triggerVictoryModal() {
         document.getElementById('btnInlineNextCity').addEventListener('click', (e) => {
             e.stopPropagation();
             statusBar.classList.add('hidden');
-            initCity((state.cityIndex + 1) % CITIES.length);
+            state.cityIndex = (state.cityIndex + 1) % CITIES.length;
+            openStartScreen(true);
         });
         document.getElementById('btnInlineDismissVic').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -434,6 +435,8 @@ function renderStartScreenDifficulty() {
         `;
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
+            // Difficulty can only be changed on the Start Screen, never during a running game
+            if (hasStartedFirstGame) return;
             selectedStartDifficulty = tierId;
             renderStartScreenDifficulty();
             updateStartScreenLaunchButton();
@@ -509,15 +512,27 @@ function isStartScreenOpen() {
     return Boolean(introEl && !introEl.classList.contains('hidden') && introEl.style.display !== 'none');
 }
 
-function openStartScreen() {
+function openStartScreen(asFullStartScreen = false) {
     const introEl = document.getElementById('introSplash');
     if (!introEl) return;
+    if (asFullStartScreen) {
+        hasStartedFirstGame = false;
+    }
     if (!isStartScreenOpen()) {
         preScreenGameSpeed = state.gameSpeed || 1;
     }
     setGameSpeed(0);
     selectedStartCityIndex = state.cityIndex || 0;
     selectedStartDifficulty = state.difficulty || 'hard';
+
+    // During a running game, hide Difficulty & City switching so difficulty can ONLY be changed on the Start Screen
+    const diffSec = document.getElementById('startDifficultySection');
+    const citySec = document.getElementById('startCitiesSection');
+    const closeBtn = document.getElementById('btnCloseStartScreen');
+    if (diffSec) diffSec.classList.toggle('hidden', hasStartedFirstGame);
+    if (citySec) citySec.classList.toggle('hidden', hasStartedFirstGame);
+    if (closeBtn) closeBtn.classList.toggle('hidden', !hasStartedFirstGame);
+
     const searchInput = document.getElementById('startCitySearchInput');
     if (searchInput) searchInput.value = '';
     renderStartScreenDifficulty();
