@@ -130,9 +130,7 @@ function updateGoalUI() {
 
     const dSpec = getDifficultySpec();
     const diffLabel = document.getElementById('uiDiffLabel');
-    const diffIcon = document.getElementById('uiDiffIcon');
     if (diffLabel) diffLabel.textContent = t(`diff_${dSpec.id}_short`);
-    if (diffIcon) diffIcon.style.color = dSpec.color;
 }
 
 function updateAllUI() {
@@ -436,12 +434,11 @@ function renderStartScreenDifficulty() {
     container.innerHTML = '';
 
     const tiers = ['joke', 'easy', 'hard', 'hardcore', 'chuck'];
-    const icons = { joke: '🤡', easy: '🌱', hard: '⚡', hardcore: '🔥', chuck: '🤠' };
 
     const activeDiff = selectedStartDifficulty || state.difficulty || 'hard';
     const curSpec = DIFFICULTY_SPECS[activeDiff] || DIFFICULTY_SPECS.hard;
     if (summaryEl) {
-        summaryEl.innerHTML = `<span style="color:${curSpec.color}">${icons[activeDiff]} ${t(`diff_${activeDiff}_name`)}</span> &nbsp;·&nbsp; ★ ${curSpec.starTargets.join(' / ')} &nbsp;·&nbsp; <span class="opacity-80">${t(`diff_${activeDiff}_desc`)}</span>`;
+        summaryEl.innerHTML = `<span style="color:${curSpec.color}">${t(`diff_${activeDiff}_name`)}</span> &nbsp;·&nbsp; ★ ${curSpec.starTargets.join(' / ')} &nbsp;·&nbsp; <span class="opacity-80">${t(`diff_${activeDiff}_desc`)}</span>`;
     }
 
     tiers.forEach((tierId) => {
@@ -449,7 +446,7 @@ function renderStartScreenDifficulty() {
         const isCurrent = activeDiff === tierId;
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = `px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all flex items-center gap-1.5 cursor-pointer ${
+        btn.className = `px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all flex items-center justify-center cursor-pointer ${
             isCurrent
                 ? 'text-white shadow-md scale-[1.04]'
                 : 'text-[#23272E]/70 hover:text-[#23272E] hover:bg-black/5'
@@ -457,10 +454,7 @@ function renderStartScreenDifficulty() {
         if (isCurrent) {
             btn.style.backgroundColor = spec.color;
         }
-        btn.innerHTML = `
-            <span>${icons[tierId]}</span>
-            <span>${t(`diff_${tierId}_short`)}</span>
-        `;
+        btn.textContent = t(`diff_${tierId}_short`);
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (hasStartedFirstGame) return;
