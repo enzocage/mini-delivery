@@ -53,25 +53,32 @@ const state = {
     floatingTexts: [],
     flyingPackages: [],
 
-    // Automatic Director Camera (Smoothly zooms out as the city grows!)
+    // Automatic Director Camera + Invisible Touch Pan/Pinch Override
     cam: {
         x: 500, y: 325, zoom: 1.75,
         targetX: 500, targetY: 325, targetZoom: 1.75,
-        manualOffsetTimer: 0
+        userOffsetX: 0,
+        userOffsetY: 0,
+        userZoomMult: 1.0,
+        manualHoldTimer: 0
     },
 
-    // Unified Pointer / Drag State
+    // Unified Pointer & High-End Invisible Touch State
     drag: {
         active: false,
+        isTouch: false,
         mode: null,
         tokenType: null,
         startNode: null,
         anchorNode: null,
         snapNode: null,
         detachedNode: null,
+        magneticTarget: null,
         canPullBackUnplug: false,
         currWorldX: 500,
         currWorldY: 325,
+        rawWorldX: 500,
+        rawWorldY: 325,
         screenX: 0,
         screenY: 0
     },
@@ -105,6 +112,13 @@ function showFloatingText(x, y, text, color = '#F59E0B') {
 /***************************************************************************
  * 5. AUTOMATIC CAMERA ZOOM & FRAMING ("zoom macht das spiel automatisch")
  ***************************************************************************/
+function resetCameraToAuto() {
+    state.cam.userOffsetX = 0;
+    state.cam.userOffsetY = 0;
+    state.cam.userZoomMult = 1.0;
+    state.cam.manualHoldTimer = 0;
+}
+
 function updateAutoCamera(rawDt, instant = false) {
     if (state.nodes.length === 0) return;
 
@@ -119,7 +133,7 @@ function updateAutoCamera(rawDt, instant = false) {
         if (n.y + pad > maxY) maxY = n.y + pad;
     }
 
-    if (state.drag.active) {
+    if (state.drag.active && state.drag.mode !== 'pan_camera') {
         const cx = Math.max(40, Math.min(WORLD_W - 40, state.drag.currWorldX));
         const cy = Math.max(40, Math.min(WORLD_H - 40, state.drag.currWorldY));
         minX = Math.min(minX, cx - 45);
@@ -146,19 +160,32 @@ function updateAutoCamera(rawDt, instant = false) {
     const centerX = (minX + maxX) * 0.5;
     const centerY = (minY + maxY) * 0.5 + (marginBottom - marginTop) * 0.22 / idealZoom;
 
-    state.cam.targetX = centerX;
-    state.cam.targetY = centerY;
-    state.cam.targetZoom = idealZoom;
+    // Gentle elastic return of manual touch pan/pinch back to the auto-director camera
+    if (state.cam.manualHoldTimer > 0) {
+        if (!state.drag.active) {
+            state.cam.manualHoldTimer = Math.max(0, state.cam.manualHoldTimer - rawDt);
+        }
+    } else if (!state.drag.active) {
+        state.cam.userOffsetX = damp(state.cam.userOffsetX, 0, 1.4, rawDt);
+        state.cam.userOffsetY = damp(state.cam.userOffsetY, 0, 1.4, rawDt);
+        state.cam.userZoomMult = damp(state.cam.userZoomMult, 1.0, 1.4, rawDt);
+    }
+
+    state.cam.targetX = Math.max(80, Math.min(WORLD_W - 80, centerX + state.cam.userOffsetX));
+    state.cam.targetY = Math.max(60, Math.min(WORLD_H - 60, centerY + state.cam.userOffsetY));
+    state.cam.targetZoom = Math.max(0.46, Math.min(2.65, idealZoom * state.cam.userZoomMult));
 
     if (instant) {
         state.cam.x = state.cam.targetX;
         state.cam.y = state.cam.targetY;
         state.cam.zoom = state.cam.targetZoom;
     } else {
-        const camSpeed = state.drag.active ? 2.2 : 1.65;
+        const camSpeed = state.drag.mode === 'pan_camera' || state.drag.mode === 'pinch_camera'
+            ? 14.0
+            : (state.drag.active ? 2.2 : 1.65);
         state.cam.x = damp(state.cam.x, state.cam.targetX, camSpeed, rawDt);
         state.cam.y = damp(state.cam.y, state.cam.targetY, camSpeed, rawDt);
-        state.cam.zoom = damp(state.cam.zoom, state.cam.targetZoom, camSpeed * 0.85, rawDt);
+        state.cam.zoom = damp(state.cam.zoom, state.cam.targetZoom, camSpeed * 0.88, rawDt);
     }
 }
 
@@ -169,6 +196,7 @@ function initCity(cityIdx) {
     state.cityIndex = cityIdx;
     const city = currentCity();
 
+    resetCameraToAuto();
     state.endlessMode = false;
     state.gameSpeed = 1;
     state.score = 0;

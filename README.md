@@ -68,6 +68,23 @@ Inspired by *Mini Metro* and *Mini Motorways*, every line is a physical, elastic
 
 ---
 
+## 📱 High-End Invisible Mobile Touch Controls
+
+Designed with zero on-screen joysticks or visual clutter—matching the flagship mobile feel of *Mini Metro* and *Mini Motorways*:
+
+| Invisible Gesture / Feature | Behavior |
+| :--- | :--- |
+| **Zoom-Compensated Hit Expansion** | Touch targets for stations, connector plugs, `⊢` T-Bars, and line segments automatically expand by `1.75×` (scaled inversely with camera zoom) for effortless fat-finger accuracy. |
+| **Finger-Occlusion Lift & Tether** | Dragging any token (`Bike`, `Car`, `Drone`, `S/L/XL Hub`) from the bottom dock lifts the placement preview `36px` above your fingertip with a delicate dotted tether so your thumb never obscures the target. |
+| **2-Finger Pinch-to-Zoom & Pan** | Pinch and pan anywhere with two fingers (`0.46×` – `2.65×` zoom) to inspect dense inner-city interchanges; smoothly glides back to the Auto-Director framing after inactivity. |
+| **1-Finger Empty-Canvas Pan** | Touch and drag on any open land or water to pan the camera with one thumb. |
+| **Double-Tap on Empty Map** | Instantly glides the camera back to the automatic city-framing view (`Auto-Camera Centered`). |
+| **2-Finger Quick Tap** | Tap anywhere with two fingers to toggle **Pause / Resume** (`⏸` / `▶`) without reaching for the top-right clock. |
+| **Long-Press (420ms) on Station** | Hold a finger on any Depot to open its live cargo/drone inspector, or on a Customer Station to highlight and select its serving line. |
+| **Swipe on Bottom Line Bar** | Swipe horizontally across the bottom line pill bar to cycle through unlocked lines with tactile haptic ticks (`navigator.vibrate`). |
+
+---
+
 ## 🌐 Multilingual Support (`EN` / `DE` / `FR` / `ES` / `中文`)
 
 **English (`EN`)** is configured as the default language out of the box. Click the **`EN`** globe button in the top-left utility bar at any time to cycle live through all **5 complete localizations** without reloading or losing game progress:

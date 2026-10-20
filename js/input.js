@@ -1,15 +1,71 @@
 /***************************************************************************
- * 10. UNIFIED INPUT: LINE DRAWING, CONNECTOR UNPLUGGING & DOCK DRAG-AND-DROP
+ * 10. UNIFIED INPUT & HIGH-END INVISIBLE MOBILE TOUCH CONTROLS
+ * - Dynamic fat-finger hit expansion & zoom-compensated magnetic snap
+ * - Finger-occlusion lift when dragging dock tokens on touchscreens
+ * - Multi-touch 2-finger pinch-to-zoom & 2-finger pan with elastic auto-return
+ * - Invisible 2-finger tap anywhere to toggle Pause / Play
+ * - 1-finger empty-canvas pan & double-tap on empty map to re-center camera
+ * - Long-press (420ms) on stations for quick inspection & line focus
+ * - Horizontal swipe on the bottom line bar to cycle lines
+ * - Subtle Web Vibration haptics (navigator.vibrate)
  ***************************************************************************/
-function findNodeAtWorld(wx, wy, hitPadding = 12) {
-    for (let i = state.nodes.length - 1; i >= 0; i--) {
-        const n = state.nodes[i];
-        if (dist(wx, wy, n.x, n.y) <= n.radius + hitPadding) return n;
+
+const activePointers = new Map();
+let twoFingerGesture = {
+    active: false,
+    startTime: 0,
+    moved: false,
+    startDist: 1,
+    startZoomMult: 1,
+    prevMidX: 0,
+    prevMidY: 0
+};
+let lastEmptyTap = { time: 0, x: 0, y: 0 };
+let longPressTimer = null;
+let lastSnapNodeId = null;
+
+function triggerHaptic(pattern = 10) {
+    try {
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+            navigator.vibrate(pattern);
+        }
+    } catch (err) {
+        // Ignore on unsupported browsers/devices
     }
-    return null;
 }
 
-function findLineTerminalAtWorld(wx, wy) {
+function getTouchBoost(isTouch = state.drag.isTouch) {
+    const zoomCompensation = 1 / Math.min(1.25, Math.max(0.62, state.cam.zoom));
+    return (isTouch ? 1.75 : 1.0) * zoomCompensation;
+}
+
+function clearLongPressTimer() {
+    if (longPressTimer !== null) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+    }
+}
+
+function findNodeAtWorld(wx, wy, hitPadding = 12, isTouch = state.drag.isTouch) {
+    const pad = hitPadding * getTouchBoost(isTouch);
+    let bestNode = null;
+    let bestDist = Infinity;
+    for (let i = state.nodes.length - 1; i >= 0; i--) {
+        const n = state.nodes[i];
+        const d = dist(wx, wy, n.x, n.y);
+        if (d <= n.radius + pad && d < bestDist) {
+            bestDist = d;
+            bestNode = n;
+        }
+    }
+    return bestNode;
+}
+
+function findLineTerminalAtWorld(wx, wy, isTouch = state.drag.isTouch) {
+    const maxR = 17 * getTouchBoost(isTouch);
+    let bestHit = null;
+    let bestDist = maxR;
+
     for (let i = 0; i < state.unlockedLines; i++) {
         const line = state.lines[i];
         if (!line || line.nodeIds.length < 2) continue;
@@ -21,17 +77,21 @@ function findLineTerminalAtWorld(wx, wy) {
         for (const end of ends) {
             if (!end.node || !end.neighbor) continue;
             const tbar = getTerminalTBarPoint(end.node, end.neighbor, 0);
-            if (tbar && dist(wx, wy, tbar.x, tbar.y) <= 17) {
-                return { line, node: end.node, neighbor: end.neighbor, nodeIndex: end.idx };
+            if (tbar) {
+                const d = dist(wx, wy, tbar.x, tbar.y);
+                if (d <= bestDist) {
+                    bestDist = d;
+                    bestHit = { line, node: end.node, neighbor: end.neighbor, nodeIndex: end.idx };
+                }
             }
         }
     }
-    return null;
+    return bestHit;
 }
 
-function findLineConnectorAtWorld(wx, wy) {
+function findLineConnectorAtWorld(wx, wy, isTouch = state.drag.isTouch) {
     let bestHit = null;
-    let bestDist = 17.5;
+    let bestDist = 17.5 * getTouchBoost(isTouch);
 
     const order = [];
     for (let i = 0; i < state.unlockedLines; i++) {
@@ -71,9 +131,9 @@ function findLineConnectorAtWorld(wx, wy) {
     return bestHit;
 }
 
-function findLineSegmentDetailAtWorld(wx, wy, maxDist = 16) {
+function findLineSegmentDetailAtWorld(wx, wy, maxDist = 16, isTouch = state.drag.isTouch) {
     let best = null;
-    let bestD = maxDist;
+    let bestD = maxDist * getTouchBoost(isTouch);
 
     for (let i = 0; i < state.unlockedLines; i++) {
         const line = state.lines[i];
@@ -103,8 +163,8 @@ function findLineSegmentDetailAtWorld(wx, wy, maxDist = 16) {
     return best;
 }
 
-function findLineAtWorld(wx, wy, maxDist = 15) {
-    const hit = findLineSegmentDetailAtWorld(wx, wy, maxDist);
+function findLineAtWorld(wx, wy, maxDist = 15, isTouch = state.drag.isTouch) {
+    const hit = findLineSegmentDetailAtWorld(wx, wy, maxDist, isTouch);
     return hit ? hit.line : null;
 }
 
@@ -155,6 +215,7 @@ function unplugStationFromLine(line, nodeIndex, wx, wy) {
         detachedNode.scaleVel = 2.2;
         state.ripples.push({ x: detachedNode.x, y: detachedNode.y, r: detachedNode.radius, maxR: 36, color: line.color, alpha: 0.75 });
     }
+    triggerHaptic([10, 24, 10]);
     sfx.playDisconnect();
     updateAllUI();
     return true;
@@ -169,6 +230,7 @@ function connectNodesOnLine(line, nodeA, nodeB) {
             line.nodeIds.pop();
             recalculateLineBridges(line);
             nodeB.scaleVel = 1.8;
+            triggerHaptic(10);
             sfx.playDisconnect();
             updateAllUI();
             return true;
@@ -177,6 +239,7 @@ function connectNodesOnLine(line, nodeA, nodeB) {
             line.nodeIds.shift();
             recalculateLineBridges(line);
             nodeB.scaleVel = 1.8;
+            triggerHaptic(10);
             sfx.playDisconnect();
             updateAllUI();
             return true;
@@ -186,6 +249,7 @@ function connectNodesOnLine(line, nodeA, nodeB) {
     const crossesWater = doesMetroCorridorCrossWater(nodeA.x, nodeA.y, nodeB.x, nodeB.y, city);
 
     if (crossesWater && state.inventory.bridges <= 0) {
+        triggerHaptic([18, 30, 18]);
         showFloatingText((nodeA.x + nodeB.x) / 2, (nodeA.y + nodeB.y) / 2, t('msg_no_bridge_drone'), '#EF4444');
         return false;
     }
@@ -216,6 +280,7 @@ function connectNodesOnLine(line, nodeA, nodeB) {
     if (modified) {
         recalculateLineBridges(line);
         nodeB.scaleVel = 2.6;
+        triggerHaptic(crossesWater ? [12, 20, 14] : 12);
         sfx.playConnect(crossesWater, line.id);
 
         if (!state.tutorialCompleted) {
@@ -241,24 +306,27 @@ function connectNodesOnLine(line, nodeA, nodeB) {
     return modified;
 }
 
-function applyTokenAtWorld(tokenType, wx, wy) {
-    const clickedNode = findNodeAtWorld(wx, wy, 16);
-    const clickedLine = findLineAtWorld(wx, wy, 20);
+function applyTokenAtWorld(tokenType, wx, wy, isTouch = state.drag.isTouch) {
+    const clickedNode = findNodeAtWorld(wx, wy, isTouch ? 24 : 16, isTouch);
+    const clickedLine = findLineAtWorld(wx, wy, isTouch ? 28 : 20, isTouch);
 
     if (tokenType.startsWith('depot_')) {
         const depotClass = tokenType.split('_')[1];
         if (state.inventory[tokenType] <= 0) return false;
         if (isPointInWater(wx, wy, currentCity(), 12)) {
+            triggerHaptic([15, 25, 15]);
             showFloatingText(wx, wy, t('msg_land_only'), '#EF4444');
             return false;
         }
-        if (clickedNode) {
+        if (findNodeAtWorld(wx, wy, 16, false)) {
+            triggerHaptic([15, 25, 15]);
             showFloatingText(wx, wy, t('msg_too_close'), '#F59E0B');
             return false;
         }
         state.inventory[tokenType]--;
         const newDepot = createDepotNode(depotClass, wx, wy);
         state.nodes.push(newDepot);
+        triggerHaptic(16);
         sfx.playPlaceDepot(depotClass);
 
         if (state.inventory.drone > 0) {
@@ -271,12 +339,28 @@ function applyTokenAtWorld(tokenType, wx, wy) {
     }
 
     if (tokenType === 'drone') {
-        if (clickedNode && clickedNode.kind === 'DEPOT') {
-            stationDroneAtNode(clickedNode, false);
-            openNodeInspector(clickedNode);
+        // Magnetic search for nearest depot if touch-dropped slightly beside one
+        let targetDepot = (clickedNode && clickedNode.kind === 'DEPOT') ? clickedNode : null;
+        if (!targetDepot && isTouch) {
+            let bestD = 46 / Math.min(1.2, state.cam.zoom);
+            for (const n of state.nodes) {
+                if (n.kind === 'DEPOT') {
+                    const d = dist(wx, wy, n.x, n.y);
+                    if (d < bestD) {
+                        bestD = d;
+                        targetDepot = n;
+                    }
+                }
+            }
+        }
+        if (targetDepot) {
+            stationDroneAtNode(targetDepot, false);
+            triggerHaptic(14);
+            openNodeInspector(targetDepot);
             setActiveTool('route');
             return true;
         }
+        triggerHaptic([15, 25, 15]);
         showFloatingText(wx, wy, t('msg_drag_to_depot'), '#06B6D4');
         return false;
     }
@@ -285,10 +369,12 @@ function applyTokenAtWorld(tokenType, wx, wy) {
         const targetLine = clickedLine || state.lines[state.selectedLineId];
         if (targetLine && targetLine.nodeIds.length >= 2) {
             if (addVehicleToLine(targetLine, tokenType, false, wx, wy)) {
+                triggerHaptic(14);
                 setActiveTool('route');
                 return true;
             }
         } else {
+            triggerHaptic([15, 25, 15]);
             showFloatingText(wx, wy, t('msg_drag_to_line'), '#F59E0B');
         }
         return false;
@@ -296,25 +382,90 @@ function applyTokenAtWorld(tokenType, wx, wy) {
     return false;
 }
 
+function getPointerWorldCoords(clientX, clientY, isTouch, mode) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = clientX - rect.left;
+    const sy = clientY - rect.top;
+    const rawW = screenToWorld(sx, sy);
+
+    // Invisible Finger-Occlusion Lift: when dragging a dock token on touch, lift target above the thumb
+    const liftScreenPx = (isTouch && mode === 'dock_token') ? -36 : 0;
+    const liftedW = liftScreenPx !== 0 ? screenToWorld(sx, sy + liftScreenPx) : rawW;
+
+    return {
+        sx, sy,
+        rawX: rawW.x,
+        rawY: rawW.y,
+        x: liftedW.x,
+        y: liftedW.y
+    };
+}
+
 canvas.addEventListener('pointerdown', (e) => {
     sfx.init();
+    const isTouch = e.pointerType === 'touch';
+    state.drag.isTouch = isTouch;
+    clearLongPressTimer();
+
     const rect = canvas.getBoundingClientRect();
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
-    const w = screenToWorld(sx, sy);
 
+    activePointers.set(e.pointerId, {
+        id: e.pointerId,
+        sx, sy,
+        startX: sx,
+        startY: sy,
+        isTouch
+    });
+
+    // MULTI-TOUCH (2 FINGERS): Invisible Pinch-to-Zoom, 2-Finger Pan & 2-Finger Tap to Pause
+    if (activePointers.size === 2) {
+        const pts = Array.from(activePointers.values());
+        const d = Math.hypot(pts[1].sx - pts[0].sx, pts[1].sy - pts[0].sy);
+        const midX = (pts[0].sx + pts[1].sx) * 0.5;
+        const midY = (pts[0].sy + pts[1].sy) * 0.5;
+
+        twoFingerGesture.active = true;
+        twoFingerGesture.startTime = performance.now();
+        twoFingerGesture.moved = false;
+        twoFingerGesture.startDist = Math.max(24, d);
+        twoFingerGesture.startZoomMult = state.cam.userZoomMult;
+        twoFingerGesture.prevMidX = midX;
+        twoFingerGesture.prevMidY = midY;
+
+        // Cancel single-finger drag if it was only panning or starting a line
+        state.drag.active = true;
+        state.drag.mode = 'pinch_camera';
+        state.drag.snapNode = null;
+        state.drag.startNode = null;
+        state.drag.anchorNode = null;
+        state.cam.manualHoldTimer = 5.0;
+        return;
+    }
+
+    if (activePointers.size > 2) return;
+
+    const coords = getPointerWorldCoords(e.clientX, e.clientY, isTouch, state.drag.mode);
+    const w = { x: coords.x, y: coords.y };
+
+    state.drag.rawWorldX = coords.rawX;
+    state.drag.rawWorldY = coords.rawY;
     state.drag.currWorldX = w.x;
     state.drag.currWorldY = w.y;
+    state.drag.screenX = sx;
+    state.drag.screenY = sy;
     state.drag.snapNode = null;
     state.drag.detachedNode = null;
+    lastSnapNodeId = null;
 
     if (state.activeTool !== 'route') {
-        if (applyTokenAtWorld(state.activeTool, w.x, w.y)) return;
+        if (applyTokenAtWorld(state.activeTool, w.x, w.y, isTouch)) return;
         setActiveTool('route');
     }
 
     // 1. PRIORITY 1: Grabbing a Connector Plug ("Verbindungsstelle") immediately unplugs the line from that station!
-    const connectorHit = findLineConnectorAtWorld(w.x, w.y);
+    const connectorHit = findLineConnectorAtWorld(w.x, w.y, isTouch);
     if (connectorHit) {
         document.getElementById('nodeInspector').classList.add('hidden');
         unplugStationFromLine(connectorHit.line, connectorHit.nodeIndex, w.x, w.y);
@@ -322,7 +473,7 @@ canvas.addEventListener('pointerdown', (e) => {
     }
 
     // 2. PRIORITY 2: Grabbing a Mini Metro T-Bar terminal cap
-    const terminalHit = findLineTerminalAtWorld(w.x, w.y);
+    const terminalHit = findLineTerminalAtWorld(w.x, w.y, isTouch);
     if (terminalHit) {
         state.selectedLineId = terminalHit.line.id;
         state.drag.active = true;
@@ -331,13 +482,14 @@ canvas.addEventListener('pointerdown', (e) => {
         state.drag.canPullBackUnplug = true;
         state.drag.pullBackNodeIndex = terminalHit.nodeIndex;
         state.drag.pullBackNeighbor = terminalHit.neighbor;
+        triggerHaptic(8);
         canvas.classList.add('dragging-active');
         updateAllUI();
         return;
     }
 
-    const clickedNode = findNodeAtWorld(w.x, w.y, 10);
-    const segHit = findLineSegmentDetailAtWorld(w.x, w.y, 15);
+    const clickedNode = findNodeAtWorld(w.x, w.y, 10, isTouch);
+    const segHit = findLineSegmentDetailAtWorld(w.x, w.y, 15, isTouch);
 
     // 3. PRIORITY 3: Grabbing a Line Segment
     if (segHit && !clickedNode) {
@@ -371,17 +523,34 @@ canvas.addEventListener('pointerdown', (e) => {
         state.drag.prevNode = segHit.n1;
         state.drag.nextNode = segHit.n2;
         state.drag.detachedNode = null;
+        triggerHaptic(8);
         canvas.classList.add('dragging-active');
         updateAllUI();
         return;
     }
 
-    // 4. PRIORITY 4: Clicking/Dragging from a Station Node
+    // 4. PRIORITY 4: Clicking/Dragging from a Station Node (+ Long-Press Inspector on Touch)
     if (clickedNode) {
         if (clickedNode.kind === 'DEPOT') {
             openNodeInspector(clickedNode);
         } else {
             document.getElementById('nodeInspector').classList.add('hidden');
+        }
+
+        if (isTouch) {
+            longPressTimer = setTimeout(() => {
+                triggerHaptic([12, 20, 14]);
+                state.ripples.push({ x: clickedNode.x, y: clickedNode.y, r: clickedNode.radius, maxR: 54, color: '#F59E0B', alpha: 0.9 });
+                if (clickedNode.kind === 'DEPOT') {
+                    openNodeInspector(clickedNode);
+                } else {
+                    const servingLine = state.lines.slice(0, state.unlockedLines).find(l => l.nodeIds.includes(clickedNode.id));
+                    if (servingLine) {
+                        state.selectedLineId = servingLine.id;
+                        updateAllUI();
+                    }
+                }
+            }, 420);
         }
 
         let targetLine = state.lines[state.selectedLineId];
@@ -413,29 +582,106 @@ canvas.addEventListener('pointerdown', (e) => {
             state.drag.canPullBackUnplug = false;
         }
 
+        triggerHaptic(8);
         canvas.classList.add('dragging-active');
         updateAllUI();
         return;
     }
 
+    // 5. PRIORITY 5: Empty Space Touch -> Double-Tap to Re-Center Camera OR 1-Finger Smooth Map Pan
     state.inspectedNodeId = null;
     document.getElementById('nodeInspector').classList.add('hidden');
+
+    const now = performance.now();
+    if (now - lastEmptyTap.time < 310 && Math.hypot(sx - lastEmptyTap.x, sy - lastEmptyTap.y) < 30) {
+        const hadManualOffset = Math.hypot(state.cam.userOffsetX, state.cam.userOffsetY) > 8 || Math.abs(state.cam.userZoomMult - 1.0) > 0.05;
+        resetCameraToAuto();
+        triggerHaptic(12);
+        state.ripples.push({ x: w.x, y: w.y, r: 4, maxR: 48, color: '#F59E0B', alpha: 0.75 });
+        if (hadManualOffset) {
+            showFloatingText(w.x, w.y - 12, t('msg_camera_reset'), '#F59E0B');
+        }
+        lastEmptyTap.time = 0;
+        return;
+    }
+    lastEmptyTap = { time: now, x: sx, y: sy };
+
+    if (isTouch) {
+        state.drag.active = true;
+        state.drag.mode = 'pan_camera';
+        state.drag.panPrevScreenX = sx;
+        state.drag.panPrevScreenY = sy;
+        state.cam.manualHoldTimer = 4.5;
+    }
 });
 
 window.addEventListener('pointermove', (e) => {
+    const isTouch = e.pointerType === 'touch' || state.drag.isTouch;
     const rect = canvas.getBoundingClientRect();
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
-    const w = screenToWorld(sx, sy);
+
+    if (activePointers.has(e.pointerId)) {
+        const pt = activePointers.get(e.pointerId);
+        if (Math.hypot(sx - pt.startX, sy - pt.startY) > 10) {
+            clearLongPressTimer();
+        }
+        pt.sx = sx;
+        pt.sy = sy;
+    }
+
+    // Handle 2-Finger Pinch-to-Zoom & 2-Finger Pan
+    if (twoFingerGesture.active && activePointers.size >= 2) {
+        const pts = Array.from(activePointers.values());
+        const d = Math.max(20, Math.hypot(pts[1].sx - pts[0].sx, pts[1].sy - pts[0].sy));
+        const midX = (pts[0].sx + pts[1].sx) * 0.5;
+        const midY = (pts[0].sy + pts[1].sy) * 0.5;
+
+        if (Math.abs(d - twoFingerGesture.startDist) > 10 ||
+            Math.hypot(midX - twoFingerGesture.prevMidX, midY - twoFingerGesture.prevMidY) > 8) {
+            twoFingerGesture.moved = true;
+        }
+
+        const scaleRatio = d / twoFingerGesture.startDist;
+        state.cam.userZoomMult = Math.max(0.55, Math.min(2.25, twoFingerGesture.startZoomMult * scaleRatio));
+
+        const dxScreen = midX - twoFingerGesture.prevMidX;
+        const dyScreen = midY - twoFingerGesture.prevMidY;
+        state.cam.userOffsetX = Math.max(-360, Math.min(360, state.cam.userOffsetX - dxScreen / state.cam.zoom));
+        state.cam.userOffsetY = Math.max(-260, Math.min(260, state.cam.userOffsetY - dyScreen / state.cam.zoom));
+        state.cam.manualHoldTimer = 5.0;
+
+        twoFingerGesture.prevMidX = midX;
+        twoFingerGesture.prevMidY = midY;
+        return;
+    }
+
+    // Handle 1-Finger Empty-Canvas Pan on Mobile
+    if (state.drag.active && state.drag.mode === 'pan_camera') {
+        const dxScreen = sx - state.drag.panPrevScreenX;
+        const dyScreen = sy - state.drag.panPrevScreenY;
+        if (Math.hypot(dxScreen, dyScreen) > 4) {
+            lastEmptyTap.time = 0; // Don't count a drag as a tap
+        }
+        state.cam.userOffsetX = Math.max(-340, Math.min(340, state.cam.userOffsetX - dxScreen / state.cam.zoom));
+        state.cam.userOffsetY = Math.max(-240, Math.min(240, state.cam.userOffsetY - dyScreen / state.cam.zoom));
+        state.cam.manualHoldTimer = 4.5;
+        state.drag.panPrevScreenX = sx;
+        state.drag.panPrevScreenY = sy;
+        return;
+    }
+
+    const coords = getPointerWorldCoords(e.clientX, e.clientY, isTouch, state.drag.mode);
+    const w = { x: coords.x, y: coords.y };
 
     state.hover.worldX = w.x;
     state.hover.worldY = w.y;
 
     if (!state.drag.active) {
-        const conn = findLineConnectorAtWorld(w.x, w.y);
-        const term = !conn ? findLineTerminalAtWorld(w.x, w.y) : null;
-        const hn = findNodeAtWorld(w.x, w.y, 8);
-        const hl = (!hn && !term && !conn) ? findLineAtWorld(w.x, w.y, 12) : null;
+        const conn = findLineConnectorAtWorld(w.x, w.y, false);
+        const term = !conn ? findLineTerminalAtWorld(w.x, w.y, false) : null;
+        const hn = findNodeAtWorld(w.x, w.y, 8, false);
+        const hl = (!hn && !term && !conn) ? findLineAtWorld(w.x, w.y, 12, false) : null;
 
         state.hover.connector = conn;
         state.hover.nodeId = hn ? hn.id : null;
@@ -444,8 +690,21 @@ window.addEventListener('pointermove', (e) => {
         return;
     }
 
+    state.drag.rawWorldX = coords.rawX;
+    state.drag.rawWorldY = coords.rawY;
     state.drag.currWorldX = w.x;
     state.drag.currWorldY = w.y;
+    state.drag.screenX = sx;
+    state.drag.screenY = sy;
+
+    // Gentle Edge Auto-Pan when dragging near mobile screen borders
+    if (isTouch && (state.drag.mode === 'draw_line' || state.drag.mode === 'reroute_end' || state.drag.mode === 'reroute_mid' || state.drag.mode === 'dock_token')) {
+        const edgeMargin = 46;
+        if (sx < edgeMargin) state.cam.userOffsetX = Math.max(-300, state.cam.userOffsetX - 3.2 / state.cam.zoom);
+        if (sx > window.innerWidth - edgeMargin) state.cam.userOffsetX = Math.min(300, state.cam.userOffsetX + 3.2 / state.cam.zoom);
+        if (sy > 70 && sy < 70 + edgeMargin) state.cam.userOffsetY = Math.max(-220, state.cam.userOffsetY - 3.2 / state.cam.zoom);
+    }
+
     const line = state.lines[state.selectedLineId];
     if (!line) return;
 
@@ -464,27 +723,37 @@ window.addEventListener('pointermove', (e) => {
     }
 
     if (state.drag.mode === 'reroute_end' && state.drag.anchorNode) {
-        const hoverNode = findNodeAtWorld(w.x, w.y, 14);
+        const hoverNode = findNodeAtWorld(w.x, w.y, 15, isTouch);
         if (hoverNode && hoverNode.id !== state.drag.anchorNode.id && !line.nodeIds.includes(hoverNode.id)) {
+            if (lastSnapNodeId !== hoverNode.id) {
+                lastSnapNodeId = hoverNode.id;
+                triggerHaptic(8);
+            }
             state.drag.snapNode = hoverNode;
         } else {
+            lastSnapNodeId = null;
             state.drag.snapNode = null;
         }
         return;
     }
 
     if (state.drag.mode === 'reroute_mid' && state.drag.prevNode && state.drag.nextNode) {
-        const hoverNode = findNodeAtWorld(w.x, w.y, 14);
+        const hoverNode = findNodeAtWorld(w.x, w.y, 15, isTouch);
         if (hoverNode && !line.nodeIds.includes(hoverNode.id)) {
+            if (lastSnapNodeId !== hoverNode.id) {
+                lastSnapNodeId = hoverNode.id;
+                triggerHaptic(8);
+            }
             state.drag.snapNode = hoverNode;
         } else {
+            lastSnapNodeId = null;
             state.drag.snapNode = null;
         }
         return;
     }
 
     if (state.drag.mode === 'draw_line' && state.drag.startNode) {
-        const hoverNode = findNodeAtWorld(w.x, w.y, 13);
+        const hoverNode = findNodeAtWorld(w.x, w.y, 14, isTouch);
         state.drag.snapNode = (hoverNode && hoverNode.id !== state.drag.startNode.id) ? hoverNode : null;
         if (hoverNode && hoverNode.id !== state.drag.startNode.id) {
             if (connectNodesOnLine(line, state.drag.startNode, hoverNode)) {
@@ -496,18 +765,44 @@ window.addEventListener('pointermove', (e) => {
     }
 });
 
-window.addEventListener('pointerup', (e) => {
+function handlePointerEnd(e) {
+    clearLongPressTimer();
+    activePointers.delete(e.pointerId);
+
+    // Check if a 2-finger quick tap just finished -> toggle Pause / Play!
+    if (twoFingerGesture.active) {
+        if (activePointers.size === 0) {
+            const elapsed = performance.now() - twoFingerGesture.startTime;
+            if (!twoFingerGesture.moved && elapsed < 270) {
+                const newSpeed = state.gameSpeed === 0 ? 1 : 0;
+                setGameSpeed(newSpeed);
+                triggerHaptic([10, 24, 10]);
+                showFloatingText(
+                    state.cam.x,
+                    state.cam.y,
+                    newSpeed === 0 ? t('msg_paused') : t('msg_resumed'),
+                    '#F59E0B'
+                );
+            }
+            twoFingerGesture.active = false;
+            state.drag.active = false;
+            state.drag.mode = null;
+        }
+        return;
+    }
+
     if (!state.drag.active) return;
+    const isTouch = e.pointerType === 'touch' || state.drag.isTouch;
     const line = state.lines[state.selectedLineId];
     const city = currentCity();
 
     if (state.drag.mode === 'dock_token' && state.drag.tokenType) {
         const rect = canvas.getBoundingClientRect();
-        const sx = e.clientX - rect.left;
         const sy = e.clientY - rect.top;
-        if (sy < window.innerHeight - 95) {
-            const w = screenToWorld(sx, sy);
-            applyTokenAtWorld(state.drag.tokenType, w.x, w.y);
+        // Cancel smoothly if dropped back into the bottom dock area
+        if (sy < window.innerHeight - 92) {
+            const coords = getPointerWorldCoords(e.clientX, e.clientY, isTouch, 'dock_token');
+            applyTokenAtWorld(state.drag.tokenType, coords.x, coords.y, isTouch);
         }
     } else if (state.drag.mode === 'reroute_end' && line) {
         const target = state.drag.snapNode;
@@ -515,6 +810,7 @@ window.addEventListener('pointerup', (e) => {
         if (target && anchor && target.id !== anchor.id && !line.nodeIds.includes(target.id)) {
             const crossesWater = doesMetroCorridorCrossWater(anchor.x, anchor.y, target.x, target.y, city);
             if (crossesWater && state.inventory.bridges <= 0) {
+                triggerHaptic([16, 28, 16]);
                 showFloatingText(target.x, target.y - 18, t('msg_no_bridge'), '#EF4444');
             } else {
                 if (state.drag.endSide === 'tail') {
@@ -525,6 +821,7 @@ window.addEventListener('pointerup', (e) => {
                 recalculateLineBridges(line);
                 target.scaleVel = 2.8;
                 state.ripples.push({ x: target.x, y: target.y, r: target.radius, maxR: 42, color: line.color, alpha: 0.9 });
+                triggerHaptic(14);
                 sfx.playConnect(crossesWater, line.id);
 
                 if (target.demandType === 'XL' && !line.vehicles.some(v => v.type === 'car') && state.inventory.car > 0) {
@@ -552,10 +849,12 @@ window.addEventListener('pointerup', (e) => {
                     line.nodeIds.splice(state.drag.insertIndex, 0, state.drag.detachedNode.id);
                 }
                 recalculateLineBridges(line);
+                triggerHaptic([16, 28, 16]);
                 showFloatingText(target.x, target.y - 18, t('msg_no_bridge'), '#EF4444');
             } else {
                 target.scaleVel = 2.8;
                 state.ripples.push({ x: target.x, y: target.y, r: target.radius, maxR: 42, color: line.color, alpha: 0.9 });
+                triggerHaptic(14);
                 sfx.playConnect(false, line.id);
             }
         } else {
@@ -563,6 +862,7 @@ window.addEventListener('pointerup', (e) => {
             if (state.inventory.bridges < 0 && state.drag.detachedNode) {
                 line.nodeIds.splice(state.drag.insertIndex, 0, state.drag.detachedNode.id);
                 recalculateLineBridges(line);
+                triggerHaptic([16, 28, 16]);
                 showFloatingText(prev.x, prev.y - 18, t('msg_no_bridge_direct'), '#EF4444');
             }
         }
@@ -577,8 +877,12 @@ window.addEventListener('pointerup', (e) => {
     state.drag.snapNode = null;
     state.drag.detachedNode = null;
     state.drag.canPullBackUnplug = false;
+    lastSnapNodeId = null;
     canvas.classList.remove('dragging-active');
-});
+}
+
+window.addEventListener('pointerup', handlePointerEnd);
+window.addEventListener('pointercancel', handlePointerEnd);
 
 document.querySelectorAll('.dock-item').forEach(btn => {
     btn.addEventListener('pointerdown', (e) => {
@@ -587,16 +891,46 @@ document.querySelectorAll('.dock-item').forEach(btn => {
         e.stopPropagation();
         sfx.init();
 
+        const isTouch = e.pointerType === 'touch';
+        state.drag.isTouch = isTouch;
+        triggerHaptic(10);
+
         setActiveTool(tool);
-        const rect = canvas.getBoundingClientRect();
-        const w = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+        const coords = getPointerWorldCoords(e.clientX, e.clientY, isTouch, 'dock_token');
         state.drag.active = true;
         state.drag.mode = 'dock_token';
         state.drag.tokenType = tool;
-        state.drag.currWorldX = w.x;
-        state.drag.currWorldY = w.y;
+        state.drag.rawWorldX = coords.rawX;
+        state.drag.rawWorldY = coords.rawY;
+        state.drag.currWorldX = coords.x;
+        state.drag.currWorldY = coords.y;
     });
 });
+
+// Invisible Horizontal Swipe on the Bottom Line Selector Pill Bar to cycle lines smoothly
+const lineSelectorBar = document.getElementById('lineSelectorBar');
+if (lineSelectorBar) {
+    let swipeStartX = null;
+    lineSelectorBar.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch') {
+            swipeStartX = e.clientX;
+        }
+    });
+    lineSelectorBar.addEventListener('pointermove', (e) => {
+        if (swipeStartX === null || e.pointerType !== 'touch') return;
+        const dx = e.clientX - swipeStartX;
+        if (Math.abs(dx) >= 34) {
+            const step = dx > 0 ? 1 : -1;
+            state.selectedLineId = (state.selectedLineId + step + state.unlockedLines) % state.unlockedLines;
+            swipeStartX = e.clientX;
+            triggerHaptic(8);
+            sfx.playTone(360 + state.selectedLineId * 55, 'sine', 0.08, 0.06);
+            updateAllUI();
+        }
+    });
+    lineSelectorBar.addEventListener('pointerup', () => { swipeStartX = null; });
+    lineSelectorBar.addEventListener('pointercancel', () => { swipeStartX = null; });
+}
 
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') {

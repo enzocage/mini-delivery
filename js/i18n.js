@@ -108,7 +108,7 @@ const I18N = {
         help_xl_desc: 'Heavy freight from Week 2! Can <strong>only be carried by a Cybercar (1×)</strong> along ground lines.',
         help_b1: '• <strong>Draw Lines & Connector Plugs:</strong> Drag from station to station. Grab the <strong>T-terminals</strong> or the <strong>connector plugs on any station</strong> to unplug and re-dock lines elsewhere.',
         help_b2: '• <strong>Dock Drag & Drop:</strong> Drag <strong>Bikes, Cars, Drones, and S/L/XL Hubs</strong> directly from the bottom dock onto lines, depots, or the map!',
-        help_b3: '• <strong>Auto-Zoom Camera:</strong> The camera starts close in the city center and smoothly zooms out as your metropolis expands.',
+        help_b3: '• <strong>Auto-Zoom & Invisible Touch Controls:</strong> The camera frames your city automatically. On touchscreens, use <strong>Pinch-to-Zoom</strong>, <strong>1-Finger Map Pan</strong>, <strong>Double-Tap</strong> to re-center, or a <strong>2-Finger Tap</strong> to toggle Pause.',
         help_continue: 'Resume Game',
 
         // Floating Messages
@@ -128,7 +128,10 @@ const I18N = {
         msg_no_bridge_direct: 'No Bridge for direct link!',
         msg_music_on: '♪ Music On: Enzo Cage – Bright',
         msg_music_off: '♪ Background Music Paused',
-        msg_music_err: 'Could not load audio stream'
+        msg_music_err: 'Could not load audio stream',
+        msg_camera_reset: 'Auto-Camera Centered',
+        msg_paused: '⏸ Paused',
+        msg_resumed: '▶ Resumed'
     },
 
     de: {
@@ -220,7 +223,7 @@ const I18N = {
         help_xl_desc: 'Schwerlast ab Woche 2! Kann <strong>nur vom Cybercar (1×)</strong> über Linien transportiert werden.',
         help_b1: '• <strong>Linien ziehen & Verbindungsstellen:</strong> Ziehe direkt von Station zu Station. Greife die <strong>T-Endstücke</strong> oder die <strong>Verbindungsstellen an einer Station</strong>, um Linien abzukoppeln und woanders neu anzudocken.',
         help_b2: '• <strong>Drag & Drop aus dem Dock:</strong> Ziehe <strong>Bikes, Cars, Drohnen und S/L/XL-Zwischenlager</strong> direkt aus der unteren Leiste auf Linien, Depots oder die Karte!',
-        help_b3: '• <strong>Automatischer Kamera-Zoom:</strong> Das Spiel startet nah im Zentrum und zoomt mit deiner wachsenden Metropole automatisch heraus.',
+        help_b3: '• <strong>Auto-Zoom & Unsichtbare Touch-Gesten:</strong> Die Kamera zoomt automatisch mit. Auf Touchscreens: <strong>Pinch-to-Zoom</strong>, <strong>1-Finger-Schwenk</strong>, <strong>Doppeltipp</strong> zum Zentrieren und <strong>2-Finger-Tipp</strong> für Pause.',
         help_continue: 'Weiterspielen',
 
         msg_no_drone: 'Keine Drohne verfügbar',
@@ -239,7 +242,10 @@ const I18N = {
         msg_no_bridge_direct: 'Keine Brücke für Direktverbindung!',
         msg_music_on: '♪ Musik an: Enzo Cage – Bright',
         msg_music_off: '♪ Hintergrundmusik pausiert',
-        msg_music_err: 'Musik konnte nicht geladen werden'
+        msg_music_err: 'Musik konnte nicht geladen werden',
+        msg_camera_reset: 'Auto-Kamera zentriert',
+        msg_paused: '⏸ Pausiert',
+        msg_resumed: '▶ Weiter'
     },
 
     fr: {
@@ -331,7 +337,7 @@ const I18N = {
         help_xl_desc: 'Fret lourd dès la Semaine 2 ! Transportable <strong>uniquement par Cybercar (1×)</strong> sur une ligne.',
         help_b1: '• <strong>Tracer & Débrancher les Lignes :</strong> Glissez de station en station. Saisissez les <strong>terminaux en T</strong> ou les <strong>connecteurs sur une station</strong> pour débrancher et reconnecter une ligne ailleurs.',
         help_b2: '• <strong>Glisser-Déposer :</strong> Glissez <strong>Bikes, Cars, Drones et Hubs S/L/XL</strong> directement depuis la barre inférieure sur vos lignes ou la carte !',
-        help_b3: '• <strong>Zoom Automatique :</strong> La caméra commence près du centre et dézoome progressivement à mesure que votre métropole grandit.',
+        help_b3: '• <strong>Zoom Auto & Gestes Tactiles Invisibles :</strong> La caméra dézoome automatiquement. Sur écran tactile : <strong>Pincer pour zoomer</strong>, <strong>Glisser à 1 doigt</strong>, <strong>Double-tap</strong> pour recentrer et <strong>Tap à 2 doigts</strong> pour Pause.',
         help_continue: 'Jouer',
 
         msg_no_drone: 'Aucun Drone disponible',
@@ -350,7 +356,10 @@ const I18N = {
         msg_no_bridge_direct: 'Aucun pont pour liaison directe !',
         msg_music_on: '♪ Musique activée : Enzo Cage – Bright',
         msg_music_off: '♪ Musique en pause',
-        msg_music_err: 'Impossible de charger la musique'
+        msg_music_err: 'Impossible de charger la musique',
+        msg_camera_reset: 'Caméra auto recentrée',
+        msg_paused: '⏸ Pause',
+        msg_resumed: '▶ Reprise'
     },
 
     es: {
@@ -442,7 +451,7 @@ const I18N = {
         help_xl_desc: '¡Carga pesada desde la Semana 2! Solo puede transportarse en <strong>Cybercar (1×)</strong> por líneas.',
         help_b1: '• <strong>Trazar y Reconectar Líneas:</strong> Arrastra de estación a estación. Sujeta los <strong>terminales en T</strong> o los <strong>conectores de cada estación</strong> para desconectar y acoplar líneas en otro lugar.',
         help_b2: '• <strong>Arrastrar y Soltar:</strong> ¡Arrastra <strong>Bikes, Cars, Drones y Hubs S/L/XL</strong> directamente desde la barra inferior hacia las líneas o el mapa!',
-        help_b3: '• <strong>Zoom Automático:</strong> La cámara empieza cerca del centro y se aleja suavemente a medida que crece tu metrópolis.',
+        help_b3: '• <strong>Zoom Auto y Gestos Táctiles Invisibles:</strong> La cámara se ajusta sola. En pantallas táctiles: <strong>Pellizcar para zoom</strong>, <strong>Deslizar con 1 dedo</strong>, <strong>Doble toque</strong> para centrar y <strong>Toque con 2 dedos</strong> para Pausa.',
         help_continue: 'Continuar',
 
         msg_no_drone: 'No hay Dron disponible',
@@ -461,7 +470,10 @@ const I18N = {
         msg_no_bridge_direct: '¡Sin puente para conexión directa!',
         msg_music_on: '♪ Música activada: Enzo Cage – Bright',
         msg_music_off: '♪ Música en pausa',
-        msg_music_err: 'No se pudo cargar la música'
+        msg_music_err: 'No se pudo cargar la música',
+        msg_camera_reset: 'Cámara auto centrada',
+        msg_paused: '⏸ Pausado',
+        msg_resumed: '▶ Reanudado'
     },
 
     zh: {
@@ -553,7 +565,7 @@ const I18N = {
         help_xl_desc: '第2周出现的重型货柜！<strong>只能由赛博货车 (1×)</strong> 通过陆路线路运输。',
         help_b1: '• <strong>绘制与拔插改道：</strong> 直接在站点间拖动连线。随时抓取线路末端的 <strong>T型把手</strong> 或站点边缘的 <strong>连接插头</strong>，即可将线路拔出并改接到其他站点。',
         help_b2: '• <strong>底部圆牌直接拖放：</strong> 可将底部的 <strong>摩托、货车、无人机及 S/L/XL 中转站</strong> 直接拖放到线路、仓库或空地上！',
-        help_b3: '• <strong>全自动镜头缩放：</strong> 游戏初期聚焦市中心，随着城市路网向外扩张，镜头将平滑自动拉远。',
+        help_b3: '• <strong>全自动镜头与隐形触控手势：</strong> 镜头随路网自动拉远。触屏支持：<strong>双指捏合缩放</strong>、<strong>单指平移地图</strong>、<strong>双击空地</strong>归位镜头、<strong>双指轻点</strong>快速暂停。',
         help_continue: '继续游戏',
 
         msg_no_drone: '没有可用的货运无人机',
@@ -572,7 +584,10 @@ const I18N = {
         msg_no_bridge_direct: '桥梁不足，无法直接跨河连接！',
         msg_music_on: '♪ 音乐已开启：Enzo Cage – Bright',
         msg_music_off: '♪ 背景音乐已暂停',
-        msg_music_err: '音频加载失败'
+        msg_music_err: '音频加载失败',
+        msg_camera_reset: '自动镜头已居中',
+        msg_paused: '⏸ 已暂停',
+        msg_resumed: '▶ 已继续'
     }
 };
 

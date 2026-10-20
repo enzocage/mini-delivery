@@ -330,18 +330,55 @@ function renderGame() {
             ctx.strokeStyle = line.color;
             ctx.lineWidth = 3.5;
             ctx.stroke();
+
+            if (state.drag.isTouch) {
+                ctx.beginPath();
+                ctx.arc(snapNode.x, snapNode.y, snapNode.radius + 15, 0, Math.PI * 2);
+                ctx.strokeStyle = line.color;
+                ctx.globalAlpha = 0.28;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.globalAlpha = 0.88;
+            }
+        } else if (state.drag.isTouch) {
+            // Subtle Dinosaur Polo Club translucent touch halo around the finger
+            ctx.beginPath();
+            ctx.arc(targetX, targetY, 20 / Math.min(1.3, state.cam.zoom), 0, Math.PI * 2);
+            ctx.fillStyle = line.color;
+            ctx.globalAlpha = 0.14;
+            ctx.fill();
+            ctx.globalAlpha = 0.88;
         }
 
         drawConnectorPlug(ctx, targetX, targetY, line.color, true);
         ctx.restore();
     }
 
-    // 9. Ghost Preview when dragging a Depot or Drone Token from the Bottom Dock
+    // 9. Ghost Preview when dragging a Depot, Drone or Vehicle Token from the Bottom Dock
     if (state.drag.active && state.drag.mode === 'dock_token' && state.drag.tokenType) {
         const tType = state.drag.tokenType;
         const wx = state.drag.currWorldX;
         const wy = state.drag.currWorldY;
+        const hitPad = state.drag.isTouch ? 34 : 20;
         ctx.save();
+
+        // If touch-lifted above the thumb, draw a delicate dotted tether to the finger contact point
+        if (state.drag.isTouch && (Math.abs(wx - state.drag.rawWorldX) > 2 || Math.abs(wy - state.drag.rawWorldY) > 2)) {
+            ctx.beginPath();
+            ctx.moveTo(state.drag.rawWorldX, state.drag.rawWorldY);
+            ctx.lineTo(wx, wy);
+            ctx.strokeStyle = state.nightMode ? 'rgba(248,250,252,0.35)' : 'rgba(35,39,46,0.28)';
+            ctx.lineWidth = 1.8;
+            ctx.setLineDash([3, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            ctx.arc(state.drag.rawWorldX, state.drag.rawWorldY, 6, 0, Math.PI * 2);
+            ctx.fillStyle = state.nightMode ? 'rgba(248,250,252,0.25)' : 'rgba(35,39,46,0.2)';
+            ctx.fill();
+        }
+
         if (tType.startsWith('depot_')) {
             const dClass = tType.split('_')[1];
             const spec = DEPOT_SPECS[dClass];
@@ -353,27 +390,38 @@ function renderGame() {
             ctx.lineWidth = 2;
             ctx.setLineDash([6, 6]);
             ctx.stroke();
+            ctx.setLineDash([]);
 
-            ctx.globalAlpha = 0.85;
+            ctx.globalAlpha = 0.88;
             ctx.fillStyle = valid ? spec.color : '#EF4444';
             ctx.beginPath();
             ctx.arc(wx, wy, spec.radius, 0, Math.PI * 2);
             ctx.fill();
         } else if (tType === 'drone') {
-            const targetDepot = findNodeAtWorld(wx, wy, 18);
+            const targetDepot = findNodeAtWorld(wx, wy, hitPad);
             const valid = targetDepot && targetDepot.kind === 'DEPOT';
+            if (valid) {
+                ctx.beginPath();
+                ctx.arc(targetDepot.x, targetDepot.y, targetDepot.radius + 10, 0, Math.PI * 2);
+                ctx.strokeStyle = '#06B6D4';
+                ctx.lineWidth = 3.5;
+                ctx.stroke();
+            }
             ctx.strokeStyle = valid ? '#06B6D4' : '#94A3B8';
             ctx.lineWidth = 2.5;
             ctx.beginPath();
-            ctx.arc(wx, wy, 14, 0, Math.PI * 2);
+            ctx.arc(valid ? targetDepot.x : wx, valid ? targetDepot.y : wy, 14, 0, Math.PI * 2);
             ctx.stroke();
         } else if (tType === 'bike' || tType === 'car') {
-            const targetLine = findLineAtWorld(wx, wy, 22);
+            const targetLine = findLineAtWorld(wx, wy, hitPad);
             ctx.fillStyle = targetLine ? targetLine.color : '#64748B';
-            ctx.globalAlpha = 0.85;
+            ctx.globalAlpha = 0.9;
             ctx.beginPath();
-            ctx.roundRect(wx - 13, wy - 7, 26, 14, 5);
+            ctx.roundRect(wx - 14, wy - 7.5, 28, 15, 5);
             ctx.fill();
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.stroke();
         }
         ctx.restore();
     }
