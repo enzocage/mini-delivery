@@ -630,6 +630,100 @@ document.getElementById('btnToggleLang').addEventListener('click', () => {
     cycleLanguage();
 });
 
+let autoFullscreenPending = true;
+
+function isFullscreenActive() {
+    return Boolean(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+}
+
+function updateFullscreenButtonUI() {
+    const active = isFullscreenActive();
+    const enterIcon = document.getElementById('iconFsEnter');
+    const exitIcon = document.getElementById('iconFsExit');
+    const btn = document.getElementById('btnToggleFullscreen');
+    if (enterIcon) enterIcon.classList.toggle('hidden', active);
+    if (exitIcon) exitIcon.classList.toggle('hidden', !active);
+    if (btn) btn.classList.toggle('ring-2', active);
+    if (btn) btn.classList.toggle('ring-amber-500', active);
+}
+
+function requestGameFullscreen() {
+    const el = document.documentElement;
+    try {
+        if (el.requestFullscreen) {
+            return el.requestFullscreen();
+        } else if (el.webkitRequestFullscreen) {
+            return el.webkitRequestFullscreen();
+        } else if (el.msRequestFullscreen) {
+            return el.msRequestFullscreen();
+        }
+    } catch (e) {}
+    return Promise.reject();
+}
+
+function exitGameFullscreen() {
+    try {
+        if (document.exitFullscreen) {
+            return document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            return document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            return document.msExitFullscreen();
+        }
+    } catch (e) {}
+    return Promise.resolve();
+}
+
+function toggleFullscreen() {
+    autoFullscreenPending = false;
+    if (isFullscreenActive()) {
+        exitGameFullscreen();
+    } else {
+        requestGameFullscreen().catch(() => {});
+    }
+}
+
+const btnFs = document.getElementById('btnToggleFullscreen');
+if (btnFs) {
+    btnFs.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFullscreen();
+    });
+}
+
+['fullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'].forEach(evt => {
+    document.addEventListener(evt, () => {
+        updateFullscreenButtonUI();
+        resizeCanvas();
+    });
+});
+
+// Automatically enter Fullscreen on the very first user gesture if the browser blocked ungestured startup fullscreen
+function handleFirstGestureFullscreen(e) {
+    if (!autoFullscreenPending) return;
+    if (e && e.target && e.target.closest && e.target.closest('#btnToggleFullscreen')) {
+        autoFullscreenPending = false;
+        return;
+    }
+    autoFullscreenPending = false;
+    if (!isFullscreenActive()) {
+        requestGameFullscreen().catch(() => {});
+    }
+}
+window.addEventListener('pointerdown', handleFirstGestureFullscreen, { once: true, capture: true });
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'f' || e.key === 'F') {
+        if (document.activeElement && document.activeElement.tagName !== 'INPUT') {
+            e.preventDefault();
+            toggleFullscreen();
+            return;
+        }
+    }
+    if (autoFullscreenPending && e.key !== 'Escape' && e.key !== 'F11') {
+        handleFirstGestureFullscreen(e);
+    }
+});
+
 document.getElementById('btnOpenCityModal').addEventListener('click', () => {
     buildCityModalGrid(document.getElementById('citySearchInput').value);
     document.getElementById('cityModal').classList.remove('hidden');
@@ -759,6 +853,16 @@ window.onload = function () {
     resizeCanvas();
     initCity(0);
     setLanguage(initialLang); // English default as requested
+    updateFullscreenButtonUI();
+
+    if (!scene) {
+        requestGameFullscreen().then(() => {
+            autoFullscreenPending = false;
+            updateFullscreenButtonUI();
+        }).catch(() => {
+            // Browser requires first user gesture; handleFirstGestureFullscreen will trigger on first click/tap
+        });
+    }
 
     const introEl = document.getElementById('introSplash');
     if (scene && scene !== 'intro') {
