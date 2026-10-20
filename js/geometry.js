@@ -74,6 +74,7 @@ function doesSegmentCrossWater(x1, y1, x2, y2, city) {
 }
 
 // Generate sleek 45-degree Metro/Motorways knee point between two points, with optional parallel lane offset!
+// Canonicalized so (x1,y1 -> x2,y2, +offset) and (x2,y2 -> x1,y1, -offset) always share the exact same knee!
 function computeMetroWaypoints(x1, y1, x2, y2, offsetPx = 0) {
     const dx = x2 - x1;
     const dy = y2 - y1;
@@ -85,21 +86,72 @@ function computeMetroWaypoints(x1, y1, x2, y2, offsetPx = 0) {
     const sx1 = x1 + nx, sy1 = y1 + ny;
     const sx2 = x2 + nx, sy2 = y2 + ny;
 
-    const adx = Math.abs(sx2 - sx1);
-    const ady = Math.abs(sy2 - sy1);
+    // Canonical endpoint ordering so the 45° knee never flips when reversing travel direction
+    const isCanon = (x1 < x2) || (x1 === x2 && y1 <= y2);
+    const lax = isCanon ? sx1 : sx2;
+    const lay = isCanon ? sy1 : sy2;
+    const lbx = isCanon ? sx2 : sx1;
+    const lby = isCanon ? sy2 : sy1;
+
+    const adx = Math.abs(lbx - lax);
+    const ady = Math.abs(lby - lay);
     if (adx < 10 || ady < 10 || Math.abs(adx - ady) < 10) {
         return [[sx1, sy1], [sx2, sy2]];
     }
     const diag = Math.min(adx, ady);
     let kx, ky;
     if (adx > ady) {
-        kx = sx1 + Math.sign(sx2 - sx1) * (adx - diag);
-        ky = sy1;
+        kx = lax + Math.sign(lbx - lax) * (adx - diag);
+        ky = lay;
     } else {
-        kx = sx1;
-        ky = sy1 + Math.sign(sy2 - sy1) * (ady - diag);
+        kx = lax;
+        ky = lay + Math.sign(lby - lay) * (ady - diag);
     }
     return [[sx1, sy1], [kx, ky], [sx2, sy2]];
+}
+
+// Expand a 3-point Metro polyline with the exact circular arc used by drawSmoothPolyline(ctx, pts, cornerRadius)
+function expandSmoothWaypoints(pts, cornerRadius = 22) {
+    if (!pts || pts.length <= 2) return pts;
+    const out = [pts[0]];
+    for (let i = 1; i < pts.length - 1; i++) {
+        const p0 = pts[i - 1];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const v1x = p0[0] - p1[0], v1y = p0[1] - p1[1];
+        const v2x = p2[0] - p1[0], v2y = p2[1] - p1[1];
+        const d1 = Math.hypot(v1x, v1y);
+        const d2 = Math.hypot(v2x, v2y);
+        if (d1 < 1e-3 || d2 < 1e-3) {
+            out.push(p1);
+            continue;
+        }
+        const u1x = v1x / d1, u1y = v1y / d1;
+        const u2x = v2x / d2, u2y = v2y / d2;
+        const dot = Math.max(-1, Math.min(1, u1x * u2x + u1y * u2y));
+        const angle = Math.acos(dot);
+        const halfTan = Math.tan(angle * 0.5);
+        if (angle < 0.05 || halfTan < 1e-4) {
+            out.push(p1);
+            continue;
+        }
+        const r = Math.min(cornerRadius, d1 * 0.48, d2 * 0.48);
+        const tanDist = Math.min(d1 * 0.49, d2 * 0.49, r / halfTan);
+        const t0x = p1[0] + u1x * tanDist, t0y = p1[1] + u1y * tanDist;
+        const t2x = p1[0] + u2x * tanDist, t2y = p1[1] + u2y * tanDist;
+
+        const steps = 6;
+        for (let s = 0; s <= steps; s++) {
+            const t = s / steps;
+            const omt = 1 - t;
+            // Smooth quadratic approximation tightly matching the circular arc between T0 and T2
+            const qx = omt * omt * t0x + 2 * omt * t * p1[0] + t * t * t2x;
+            const qy = omt * omt * t0y + 2 * omt * t * p1[1] + t * t * t2y;
+            out.push([qx, qy]);
+        }
+    }
+    out.push(pts[pts.length - 1]);
+    return out;
 }
 
 function doesMetroCorridorCrossWater(x1, y1, x2, y2, city) {

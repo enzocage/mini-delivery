@@ -602,6 +602,85 @@ function addVehicleToLine(line, vType, freeFromStarter = false, spawnX = null, s
     return true;
 }
 
+function reconcileLineVehicles(line) {
+    if (!line || !line.vehicles || line.vehicles.length === 0) return;
+    const segCount = getLineSegmentCount(line);
+    if (segCount < 1) return;
+
+    for (const v of line.vehicles) {
+        // 1. If the exact segment (segNodeA, segNodeB) still exists on the line, keep the vehicle on it seamlessly
+        if (v.segNodeA !== undefined && v.segNodeB !== undefined) {
+            let matched = false;
+            for (let i = 0; i < segCount; i++) {
+                const [id1, id2] = getLineSegmentNodeIds(line, i);
+                if (id1 === v.segNodeA && id2 === v.segNodeB) {
+                    v.segIndex = i;
+                    matched = true;
+                    break;
+                } else if (id1 === v.segNodeB && id2 === v.segNodeA) {
+                    v.segIndex = i;
+                    v.dir = -v.dir;
+                    v.segNodeA = id1;
+                    v.segNodeB = id2;
+                    matched = true;
+                    break;
+                }
+            }
+            if (matched) continue;
+        }
+
+        // 2. Otherwise (segment was split or detached), project (v.x, v.y) onto the closest point along the updated road
+        let bestSeg = 0;
+        let bestProg = 0;
+        let bestDist = Infinity;
+
+        for (let i = 0; i < segCount; i++) {
+            const [id1, id2] = getLineSegmentNodeIds(line, i);
+            const n1 = state.nodes.find(n => n.id === id1);
+            const n2 = state.nodes.find(n => n.id === id2);
+            if (!n1 || !n2) continue;
+
+            const laneOffset = getSegmentParallelOffset(line.id, n1.id, n2.id);
+            const rawPts = computeMetroWaypoints(n1.x, n1.y, n2.x, n2.y, laneOffset);
+            const smoothPts = expandSmoothWaypoints(rawPts, 22);
+            const pts = v.dir === 1 ? smoothPts : smoothPts.slice().reverse();
+
+            let totalLen = 0;
+            const segLens = [];
+            for (let k = 0; k < pts.length - 1; k++) {
+                const l = dist(pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1]);
+                segLens.push(l);
+                totalLen += l;
+            }
+            totalLen = Math.max(1, totalLen);
+
+            let accum = 0;
+            for (let k = 0; k < pts.length - 1; k++) {
+                const ax = pts[k][0], ay = pts[k][1];
+                const bx = pts[k + 1][0], by = pts[k + 1][1];
+                const l2 = (bx - ax) ** 2 + (by - ay) ** 2;
+                let t = l2 > 0 ? ((v.x - ax) * (bx - ax) + (v.y - ay) * (by - ay)) / l2 : 0;
+                t = Math.max(0, Math.min(1, t));
+                const px = ax + t * (bx - ax);
+                const py = ay + t * (by - ay);
+                const d = dist(v.x, v.y, px, py);
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestSeg = i;
+                    bestProg = Math.max(0, Math.min(0.98, (accum + t * segLens[k]) / totalLen));
+                }
+                accum += segLens[k];
+            }
+        }
+
+        v.segIndex = bestSeg;
+        v.progress = bestProg;
+        const [newIdA, newIdB] = getLineSegmentNodeIds(line, bestSeg);
+        v.segNodeA = newIdA;
+        v.segNodeB = newIdB;
+    }
+}
+
 function recalculateLineBridges(line) {
     state.inventory.bridges += line.bridgesUsed;
     line.bridgesUsed = 0;
@@ -624,6 +703,7 @@ function recalculateLineBridges(line) {
     }
     line.bridgesUsed = needed;
     state.inventory.bridges -= needed;
+    reconcileLineVehicles(line);
 }
 
 function openLineLoopAtSegment(line, segIdx) {

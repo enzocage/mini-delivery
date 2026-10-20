@@ -351,11 +351,16 @@ function updateLineVehicles(dt) {
             const nB = state.nodes.find(n => n.id === idB);
             if (!nA || !nB) continue;
 
-            const fromNode = v.dir === 1 ? nA : nB;
-            const toNode   = v.dir === 1 ? nB : nA;
+            v.segNodeA = nA.id;
+            v.segNodeB = nB.id;
 
-            const laneOffset = getSegmentParallelOffset(line.id, fromNode.id, toNode.id);
-            const pts = computeMetroWaypoints(fromNode.x, fromNode.y, toNode.x, toNode.y, laneOffset);
+            const toNode = v.dir === 1 ? nB : nA;
+
+            // Always compute the exact rendered corridor (nA -> nB) and reverse the point list when v.dir === -1
+            const laneOffset = getSegmentParallelOffset(line.id, nA.id, nB.id);
+            const rawPts = computeMetroWaypoints(nA.x, nA.y, nB.x, nB.y, laneOffset);
+            const smoothPts = expandSmoothWaypoints(rawPts, 22);
+            const pts = v.dir === 1 ? smoothPts : smoothPts.slice().reverse();
 
             let segLengths = [];
             let totalLen = 0;
@@ -374,8 +379,9 @@ function updateLineVehicles(dt) {
 
             if (v.progress >= 1) {
                 v.progress = 0;
-                v.x = toNode.x;
-                v.y = toNode.y;
+                const endPt = pts[pts.length - 1];
+                v.x = endPt[0];
+                v.y = endPt[1];
                 v.dwellTimer = 0.09;
 
                 handleVehicleStopAtNode(v, line, toNode);
@@ -401,6 +407,9 @@ function updateLineVehicles(dt) {
                         }
                     }
                 }
+                const [nextIdA, nextIdB] = getLineSegmentNodeIds(line, v.segIndex);
+                v.segNodeA = nextIdA;
+                v.segNodeB = nextIdB;
             } else {
                 let targetDist = v.progress * totalLen;
                 for (let i = 0; i < segLengths.length; i++) {
