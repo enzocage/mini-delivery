@@ -13,7 +13,9 @@ const I18N = {
     en: {
         // Intro & General
         intro_subtitle: 'Urban Logistics & Transit Network',
-        credits_prefix: 'coding & music:',
+        credits_prefix: 'coding:',
+        credits_coding: 'coding:',
+        credits_music: 'music:',
         days: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'],
 
         // Tooltips
@@ -170,7 +172,9 @@ const I18N = {
 
     de: {
         intro_subtitle: 'Urbane Logistik & Liniennetz',
-        credits_prefix: 'coding & music:',
+        credits_prefix: 'coding:',
+        credits_coding: 'coding:',
+        credits_music: 'music:',
         days: ['MO', 'DI', 'MI', 'DO', 'FR', 'SA', 'SO'],
 
         tip_theme: 'Tag / Nacht Modus',
@@ -317,7 +321,9 @@ const I18N = {
 
     fr: {
         intro_subtitle: 'Logistique Urbaine & Réseau',
-        credits_prefix: 'code & musique :',
+        credits_prefix: 'code :',
+        credits_coding: 'code :',
+        credits_music: 'musique :',
         days: ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'],
 
         tip_theme: 'Mode Jour / Nuit',
@@ -464,7 +470,9 @@ const I18N = {
 
     es: {
         intro_subtitle: 'Logística Urbana y Red de Líneas',
-        credits_prefix: 'código y música:',
+        credits_prefix: 'código:',
+        credits_coding: 'código:',
+        credits_music: 'música:',
         days: ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'],
 
         tip_theme: 'Modo Día / Noche',
@@ -611,7 +619,9 @@ const I18N = {
 
     zh: {
         intro_subtitle: '城市物流与极简路网模拟',
-        credits_prefix: '编程与音乐：',
+        credits_prefix: '编程：',
+        credits_coding: '编程：',
+        credits_music: '音乐：',
         days: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
 
         tip_theme: '日间 / 夜间模式',

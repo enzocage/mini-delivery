@@ -5,7 +5,7 @@
 [![Cities](https://img.shields.io/badge/World%20Metropolises-30%20Cities-10B981?style=for-the-badge)](#30-real-world-metropolises)
 [![Audio](https://img.shields.io/badge/Audio-Procedural%20Synth%20%2B%20Enzo%20Cage%20OST-8B5CF6?style=for-the-badge)](#procedural-audio--background-music)
 
-> **coding & music: felix schmidt**
+> **coding: felix schmidt ([www.felixschmidt.org](https://www.felixschmidt.org)) · music: enzo cage**
 
 **MINI DELIVERY** is a minimalist, tactile urban logistics and transit network strategy game inspired by the iconic design philosophy of Dinosaur Polo Club's *Mini Metro* and *Mini Motorways*. Start in a calm, tightly framed city center with just a single Main Depot and two nearby stations—and scale your multi-modal delivery network of **45° transit corridors**, **Cyberbikes**, **Heavy-Duty Cybercars**, **Cargo Drones**, **River Bridges**, and **S / L / XL Transfer Hubs** as the camera smoothly zooms out into a bustling, late-game metropolis.
 
@@ -197,6 +197,6 @@ No build tools or package installations are required:
 
 ## 👤 Credits
 
-- **Coding & Music:** **Felix Schmidt** ([enzocage.de](https://www.enzocage.de))
-- **Background Track:** *Enzo Cage – Bright* (`enzo_cage_bright.mp3`)
+- **Coding:** **Felix Schmidt** ([www.felixschmidt.org](https://www.felixschmidt.org))
+- **Music:** **Enzo Cage** (*Enzo Cage – Bright*, `enzo_cage_bright.mp3`)
 - **Visual & Gameplay Inspiration:** *Mini Metro* & *Mini Motorways* by Dinosaur Polo Club
