@@ -503,11 +503,127 @@ function renderStartScreenRegionTabs() {
     });
 }
 
+const miniMapCanvasCache = {};
+let carouselTargetScroll = 0;
+let carouselIsAnimating = false;
+let carouselHoldDir = 0;
+let carouselDragState = null;
+let startCityPreviewTimer = null;
+
+function drawCachedMiniMapPreview(targetCanvas, city) {
+    let cached = miniMapCanvasCache[city.id];
+    if (!cached) {
+        cached = document.createElement('canvas');
+        cached.width = targetCanvas.width;
+        cached.height = targetCanvas.height;
+        renderMiniMapPreview(cached, city);
+        miniMapCanvasCache[city.id] = cached;
+    }
+    const ctx = targetCanvas.getContext('2d');
+    ctx.drawImage(cached, 0, 0);
+}
+
+function getCarouselMaxScroll(container) {
+    if (!container) return 0;
+    return Math.max(0, container.scrollWidth - container.clientWidth);
+}
+
+function setCarouselTargetScroll(targetPos) {
+    const container = document.getElementById('startCityGridContainer');
+    if (!container) return;
+    const maxScroll = getCarouselMaxScroll(container);
+    carouselTargetScroll = Math.max(0, Math.min(maxScroll, targetPos));
+    carouselIsAnimating = true;
+}
+
+function scrollCarouselBy(deltaPx) {
+    const container = document.getElementById('startCityGridContainer');
+    if (!container) return;
+    if (!carouselIsAnimating) {
+        carouselTargetScroll = container.scrollLeft;
+    }
+    setCarouselTargetScroll(carouselTargetScroll + deltaPx);
+}
+
+function centerCardInCarousel(card, instant = false) {
+    const container = document.getElementById('startCityGridContainer');
+    if (!container || !card) return;
+    const target = card.offsetLeft - (container.clientWidth - card.offsetWidth) * 0.5;
+    const clamped = Math.max(0, Math.min(getCarouselMaxScroll(container), target));
+    carouselTargetScroll = clamped;
+    if (instant) {
+        container.scrollLeft = clamped;
+        carouselIsAnimating = false;
+    } else {
+        carouselIsAnimating = true;
+    }
+}
+
+function updateStartCarouselAnimation(rawDt) {
+    const container = document.getElementById('startCityGridContainer');
+    if (!container || !isStartScreenOpen()) return;
+
+    if (carouselHoldDir !== 0) {
+        if (!carouselIsAnimating) carouselTargetScroll = container.scrollLeft;
+        setCarouselTargetScroll(carouselTargetScroll + carouselHoldDir * 1150 * rawDt);
+    }
+
+    if (!carouselIsAnimating) return;
+
+    const current = container.scrollLeft;
+    const diff = carouselTargetScroll - current;
+    if (Math.abs(diff) < 0.6) {
+        container.scrollLeft = carouselTargetScroll;
+        if (carouselHoldDir === 0) carouselIsAnimating = false;
+    } else {
+        const factor = 1 - Math.exp(-18 * rawDt);
+        container.scrollLeft = current + diff * factor;
+    }
+}
+
+function scheduleStartCityBackgroundPreview(idx) {
+    if (startCityPreviewTimer) {
+        clearTimeout(startCityPreviewTimer);
+    }
+    startCityPreviewTimer = setTimeout(() => {
+        startCityPreviewTimer = null;
+        if (!hasStartedFirstGame && state.cityIndex !== idx) {
+            initCity(idx);
+            setGameSpeed(0);
+        }
+    }, 110);
+}
+
+function selectStartScreenCity(idx, cardEl, smoothCenter = true) {
+    if (hasStartedFirstGame) return;
+    selectedStartCityIndex = idx;
+    updateStartScreenLaunchButton();
+
+    const container = document.getElementById('startCityGridContainer');
+    if (container) {
+        const prevSelected = container.querySelector('.city-postcard.selected');
+        if (prevSelected && Number(prevSelected.dataset.cityIdx) !== idx) {
+            prevSelected.classList.remove('selected');
+        }
+        const targetCard = cardEl || container.querySelector(`.city-postcard[data-city-idx="${idx}"]`);
+        if (targetCard) {
+            targetCard.classList.add('selected');
+            if (smoothCenter) {
+                centerCardInCarousel(targetCard, false);
+            }
+        }
+    }
+
+    scheduleStartCityBackgroundPreview(idx);
+}
+
 function renderStartScreenCities(filterText = '') {
     const container = document.getElementById('startCityGridContainer');
     if (!container) return;
     container.innerHTML = '';
     const q = filterText.trim().toLowerCase();
+    const frag = document.createDocumentFragment();
+    let selectedCardEl = null;
 
     CITIES.forEach((city, idx) => {
         if (!q && !matchesRegionFilter(city, selectedStartRegion)) {
@@ -527,15 +643,16 @@ function renderStartScreenCities(filterText = '') {
         card.type = 'button';
         card.dataset.cityIdx = idx;
         card.className = `city-postcard w-48 sm:w-52 flex-shrink-0 rounded-[24px] p-3 text-left flex flex-col gap-2 cursor-pointer ${isSelected ? 'selected' : ''}`;
+        if (isSelected) selectedCardEl = card;
 
         const miniCanvas = document.createElement('canvas');
         miniCanvas.width = 168;
         miniCanvas.height = 88;
-        miniCanvas.className = 'w-full h-[84px] rounded-2xl border border-black/5';
-        renderMiniMapPreview(miniCanvas, city);
+        miniCanvas.className = 'w-full h-[84px] rounded-2xl border border-black/5 pointer-events-none';
+        drawCachedMiniMapPreview(miniCanvas, city);
 
         const info = document.createElement('div');
-        info.className = 'w-full px-0.5';
+        info.className = 'w-full px-0.5 pointer-events-none';
         info.innerHTML = `
             <div class="flex items-center justify-between gap-1">
                 <span class="font-extrabold text-sm text-[#23272E] truncate">${city.name}</span>
@@ -553,16 +670,8 @@ function renderStartScreenCities(filterText = '') {
 
         card.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (hasStartedFirstGame) return;
-            selectedStartCityIndex = idx;
-            // Live-preview the selected city's river network on the background canvas!
-            initCity(idx);
-            setGameSpeed(0);
-            updateStartScreenLaunchButton();
-            container.querySelectorAll('.city-postcard').forEach(el => {
-                el.classList.toggle('selected', Number(el.dataset.cityIdx) === idx);
-            });
-            card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            if (carouselDragState && carouselDragState.moved) return;
+            selectStartScreenCity(idx, card, true);
         });
         card.addEventListener('dblclick', (e) => {
             e.stopPropagation();
@@ -570,8 +679,15 @@ function renderStartScreenCities(filterText = '') {
             selectedStartCityIndex = idx;
             launchGameFromStartScreen(true);
         });
-        container.appendChild(card);
+        frag.appendChild(card);
     });
+
+    container.appendChild(frag);
+    carouselIsAnimating = false;
+    carouselTargetScroll = container.scrollLeft;
+    if (selectedCardEl && !q) {
+        requestAnimationFrame(() => centerCardInCarousel(selectedCardEl, true));
+    }
 
     updateStartScreenLaunchButton();
 }
@@ -683,6 +799,10 @@ function closeStartScreenAndResume() {
 }
 
 function launchGameFromStartScreen(forceRestart = false, asSimulator = false) {
+    if (startCityPreviewTimer) {
+        clearTimeout(startCityPreviewTimer);
+        startCityPreviewTimer = null;
+    }
     const needsNewGame = !hasStartedFirstGame ||
         forceRestart ||
         asSimulator !== state.simulatorMode ||
@@ -1075,26 +1195,114 @@ const btnCarouselLeft = document.getElementById('btnCarouselLeft');
 const btnCarouselRight = document.getElementById('btnCarouselRight');
 const startCarouselEl = document.getElementById('startCityGridContainer');
 
-if (btnCarouselLeft && startCarouselEl) {
-    btnCarouselLeft.addEventListener('click', (e) => {
+function bindCarouselArrowButton(btn, dir) {
+    if (!btn || !startCarouselEl) return;
+    let holdTimer = null;
+    let didHold = false;
+
+    const stopHold = () => {
+        if (holdTimer) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+        }
+        carouselHoldDir = 0;
+    };
+
+    btn.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
-        startCarouselEl.scrollBy({ left: -440, behavior: 'smooth' });
+        didHold = false;
+        stopHold();
+        holdTimer = setTimeout(() => {
+            didHold = true;
+            carouselHoldDir = dir;
+            carouselIsAnimating = true;
+        }, 170);
+    });
+
+    btn.addEventListener('pointerup', stopHold);
+    btn.addEventListener('pointerleave', stopHold);
+    btn.addEventListener('pointercancel', stopHold);
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        stopHold();
+        if (!didHold) {
+            scrollCarouselBy(dir * 436);
+        }
     });
 }
-if (btnCarouselRight && startCarouselEl) {
-    btnCarouselRight.addEventListener('click', (e) => {
-        e.stopPropagation();
-        startCarouselEl.scrollBy({ left: 440, behavior: 'smooth' });
-    });
-}
+
+bindCarouselArrowButton(btnCarouselLeft, -1);
+bindCarouselArrowButton(btnCarouselRight, 1);
+
 if (startCarouselEl) {
     startCarouselEl.addEventListener('wheel', (e) => {
         if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
             e.preventDefault();
-            startCarouselEl.scrollLeft += e.deltaY;
+            scrollCarouselBy(e.deltaY * 1.35);
+        } else if (Math.abs(e.deltaX) > 0) {
+            carouselIsAnimating = false;
+            carouselTargetScroll = startCarouselEl.scrollLeft;
         }
     }, { passive: false });
+
+    startCarouselEl.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        carouselIsAnimating = false;
+        carouselDragState = {
+            startX: e.clientX,
+            startScroll: startCarouselEl.scrollLeft,
+            lastX: e.clientX,
+            lastTime: performance.now(),
+            velocity: 0,
+            moved: false
+        };
+    });
+
+    window.addEventListener('pointermove', (e) => {
+        if (!carouselDragState || !startCarouselEl) return;
+        const dx = e.clientX - carouselDragState.startX;
+        if (Math.abs(dx) > 6) {
+            carouselDragState.moved = true;
+        }
+        if (carouselDragState.moved) {
+            const now = performance.now();
+            const dt = Math.max(1, now - carouselDragState.lastTime);
+            carouselDragState.velocity = (carouselDragState.lastX - e.clientX) / dt;
+            carouselDragState.lastX = e.clientX;
+            carouselDragState.lastTime = now;
+            startCarouselEl.scrollLeft = carouselDragState.startScroll - dx;
+            carouselTargetScroll = startCarouselEl.scrollLeft;
+        }
+    });
+
+    const endCarouselDrag = () => {
+        if (!carouselDragState) return;
+        if (carouselDragState.moved && Math.abs(carouselDragState.velocity) > 0.15) {
+            scrollCarouselBy(carouselDragState.velocity * 260);
+        }
+        setTimeout(() => { carouselDragState = null; }, 0);
+    };
+    window.addEventListener('pointerup', endCarouselDrag);
+    window.addEventListener('pointercancel', endCarouselDrag);
 }
+
+window.addEventListener('keydown', (e) => {
+    if (!isStartScreenOpen() || hasStartedFirstGame) return;
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const cards = startCarouselEl ? Array.from(startCarouselEl.querySelectorAll('.city-postcard')) : [];
+        if (cards.length === 0) return;
+        const curPos = cards.findIndex(c => Number(c.dataset.cityIdx) === selectedStartCityIndex);
+        const dir = e.key === 'ArrowRight' ? 1 : -1;
+        const nextPos = curPos === -1 ? 0 : (curPos + dir + cards.length) % cards.length;
+        const nextCard = cards[nextPos];
+        if (nextCard) {
+            selectStartScreenCity(Number(nextCard.dataset.cityIdx), nextCard, true);
+        }
+    }
+});
 
 const introSplashEl = document.getElementById('introSplash');
 if (introSplashEl) {
@@ -1140,6 +1348,7 @@ let lastFrameTime = performance.now();
 function gameLoop(now) {
     const rawDt = Math.min(0.05, (now - lastFrameTime) / 1000);
     lastFrameTime = now;
+    updateStartCarouselAnimation(rawDt);
     updateSimulation(rawDt);
     renderGame();
     requestAnimationFrame(gameLoop);
