@@ -229,9 +229,20 @@
             <svg id="iconMoon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
 
-        <button id="btnToggleSound" title="Audio Synthesizer An/Aus" class="dpc-icon-btn pointer-events-auto opacity-80 hover:opacity-100">
+        <button id="btnToggleSound" title="Soundeffekte (Synthesizer) An/Aus" class="dpc-icon-btn pointer-events-auto opacity-80 hover:opacity-100">
             <svg id="iconSoundOn" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
             <svg id="iconSoundOff" class="w-4 h-4 hidden text-rose-500" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        </button>
+
+        <button id="btnToggleMusic" title="Hintergrundmusik optional An/Aus (Enzo Cage – Bright)" class="dpc-icon-btn pointer-events-auto opacity-75 hover:opacity-100 relative">
+            <svg id="iconMusicNote" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 18V5l12-2v13"/>
+                <circle cx="6" cy="18" r="3"/>
+                <circle cx="18" cy="16" r="3"/>
+            </svg>
+            <svg id="iconMusicSlash" class="w-4 h-4 absolute inset-0 m-auto text-rose-500/80 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <line x1="4" y1="4" x2="20" y2="20" stroke-linecap="round"/>
+            </svg>
         </button>
 
         <button id="btnOpenHelp" title="Logistik-Guide" class="dpc-icon-btn pointer-events-auto opacity-80 hover:opacity-100 font-extrabold text-xs">
@@ -409,13 +420,13 @@
 
     <!-- MODAL 2: WEEKLY UPGRADE (Mini Motorways Bouncing Circular Icons Style) -->
     <div id="upgradeModal" class="fixed inset-0 z-40 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 hidden">
-        <div class="max-w-xl w-full text-center">
+        <div class="max-w-3xl w-full text-center">
             <div class="inline-block px-4 py-1 rounded-full bg-amber-500 text-white font-extrabold text-xs uppercase tracking-widest mb-2 shadow">
                 <span id="upgradeWeekTitle">Woche 2</span>
             </div>
             <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-1 drop-shadow">Neue Ressourcen</h2>
-            <p class="text-white/80 text-sm mb-7">Wähle eine Lieferung für dein wachsendes Logistiknetz</p>
-            <div id="upgradeCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-5"></div>
+            <p id="upgradeWeekSub" class="text-white/85 text-sm mb-6">+1 Brücke automatisch erhalten · Wähle zusätzlich ein Logistik-Paket</p>
+            <div id="upgradeCardsContainer" class="grid grid-cols-1 sm:grid-cols-3 gap-4"></div>
         </div>
     </div>
 
@@ -1182,10 +1193,10 @@
     const WORLD_H = 650;
 
     const DEPOT_SPECS = {
-        MAIN: { label: 'Hauptdepot',      cap: 45, allowed: ['S', 'L', 'XL'], radius: 22, droneRange: 255, color: '#F59E0B' },
-        S:    { label: 'S-Zwischenlager', cap: 6,  allowed: ['S'],            radius: 15, droneRange: 215, color: '#0EA5E9' },
-        L:    { label: 'L-Zwischenlager', cap: 12, allowed: ['S', 'L'],       radius: 17, droneRange: 245, color: '#F59E0B' },
-        XL:   { label: 'XL-Mega-Hub',     cap: 24, allowed: ['S', 'L', 'XL'], radius: 20, droneRange: 280, color: '#F43F5E' }
+        MAIN: { label: 'Hauptdepot',      cap: 90, allowed: ['S', 'L', 'XL'], radius: 22, droneRange: 265, color: '#F59E0B' },
+        S:    { label: 'S-Zwischenlager', cap: 8,  allowed: ['S'],            radius: 15, droneRange: 225, color: '#0EA5E9' },
+        L:    { label: 'L-Zwischenlager', cap: 16, allowed: ['S', 'L'],       radius: 17, droneRange: 255, color: '#F59E0B' },
+        XL:   { label: 'XL-Mega-Hub',     cap: 30, allowed: ['S', 'L', 'XL'], radius: 20, droneRange: 290, color: '#F43F5E' }
     };
 
     const VEHICLE_SPECS = {
@@ -1208,27 +1219,27 @@
         weekCount: 1,
         rushHourPulse: 0,
 
-        // Progressive Unlocks (Starts minimalist, expands every week!)
-        unlockedLines: 2, // Starts with 2 lines like Mini Metro, up to 7
+        // Progressive Unlocks (Starts minimalist with 3 lines like Mini Metro, expands up to 7!)
+        unlockedLines: 3,
         everUnlocked: {
             bike: true,
             drone: true,
             bridges: true,
+            depot_S: true,
             car: false,
-            depot_S: false,
             depot_L: false,
             depot_XL: false
         },
 
-        // Player Inventory (Minimalist at start!)
+        // Player Inventory (Enough bridges & vehicles from Day 1 to cross rivers & scale far!)
         inventory: {
-            depot_S: 0,
+            depot_S: 1,
             depot_L: 0,
             depot_XL: 0,
             drone: 1,
-            bike: 2,
+            bike: 3,
             car: 0,
-            bridges: 1
+            bridges: 3
         },
 
         // Active Tool & Selection
@@ -1352,23 +1363,51 @@
         }
     }
 
-    // Find a valid land coordinate within a progressive distance band from a reference point
-    function findProgressiveLandSpot(city, refX, refY, minDist, maxDist, minNodeDist = 64) {
-        for (let attempt = 0; attempt < 260; attempt++) {
-            const angle = Math.random() * Math.PI * 2;
-            const r = minDist + Math.random() * Math.max(20, maxDist - minDist);
-            const x = Math.max(58, Math.min(WORLD_W - 58, refX + Math.cos(angle) * r));
-            const y = Math.max(58, Math.min(WORLD_H - 58, refY + Math.sin(angle) * r));
-
-            if (isPointInWater(x, y, city, 17)) continue;
-            let tooClose = false;
-            for (const n of state.nodes) {
-                if (dist(x, y, n.x, n.y) < minNodeDist) {
-                    tooClose = true;
-                    break;
-                }
+    function doesMetroCorridorCrossWater(x1, y1, x2, y2, city) {
+        const pts = computeMetroWaypoints(x1, y1, x2, y2, 0);
+        for (let i = 0; i < pts.length - 1; i++) {
+            if (doesSegmentCrossWater(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], city)) {
+                return true;
             }
-            if (!tooClose) return { x, y };
+        }
+        return false;
+    }
+
+    // Find a valid land coordinate within a progressive distance band from a reference point
+    function findProgressiveLandSpot(city, refX, refY, minDist, maxDist, minNodeDist = 64, avoidWaterCrossing = false) {
+        for (let pass = 0; pass < (avoidWaterCrossing ? 2 : 1); pass++) {
+            const checkWaterCrossing = avoidWaterCrossing && pass === 0;
+            for (let attempt = 0; attempt < 260; attempt++) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = minDist + Math.random() * Math.max(20, maxDist - minDist);
+                const x = Math.max(58, Math.min(WORLD_W - 58, refX + Math.cos(angle) * r));
+                const y = Math.max(58, Math.min(WORLD_H - 58, refY + Math.sin(angle) * r));
+
+                if (isPointInWater(x, y, city, 17)) continue;
+                let tooClose = false;
+                for (const n of state.nodes) {
+                    if (dist(x, y, n.x, n.y) < minNodeDist) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+                if (tooClose) continue;
+
+                if (checkWaterCrossing) {
+                    // Check if reachable without crossing water from refX/refY or any existing station
+                    let hasDryPath = !doesMetroCorridorCrossWater(refX, refY, x, y, city);
+                    if (!hasDryPath) {
+                        for (const n of state.nodes) {
+                            if (!doesMetroCorridorCrossWater(n.x, n.y, x, y, city)) {
+                                hasDryPath = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!hasDryPath) continue;
+                }
+                return { x, y };
+            }
         }
         return findValidLandSpot(city, minNodeDist, 60, false);
     }
@@ -1402,7 +1441,7 @@
     }
 
     /***************************************************************************
-     * 6. INITIALIZATION: MINIMALIST BEGINNING (1 DEPOT + 2 NEARBY S-STATIONS)
+     * 6. INITIALIZATION: MINIMALIST BEGINNING WITH SOLID STARTING RESOURCES
      ***************************************************************************/
     function initCity(cityIdx) {
         state.cityIndex = cityIdx;
@@ -1417,25 +1456,25 @@
         state.weekCount = 1;
         state.rushHourPulse = 0;
 
-        // Minimalist starting resources (like Day 1 in Mini Metro / Mini Motorways)
-        state.unlockedLines = 2;
+        // Balanced starting resources: 3 Lines, 3 Cyberbikes, 3 Bridges, 1 Drone, 1 S-Hub
+        state.unlockedLines = 3;
         state.everUnlocked = {
             bike: true,
             drone: true,
             bridges: true,
+            depot_S: true,
             car: false,
-            depot_S: false,
             depot_L: false,
             depot_XL: false
         };
         state.inventory = {
-            depot_S: 0,
+            depot_S: 1,
             depot_L: 0,
             depot_XL: 0,
             drone: 1,
-            bike: 2,
+            bike: 3,
             car: 0,
-            bridges: 1
+            bridges: 3
         };
 
         state.activeTool = 'route';
@@ -1468,9 +1507,9 @@
         const mainDepot = createDepotNode('MAIN', mainPos.x, mainPos.y);
         state.nodes.push(mainDepot);
 
-        // 2. Spawn ONLY 2 nearby S-Customer Stations on the same side of the river if possible
+        // 2. Spawn 2 nearby S-Customer Stations on the same side of the river (no bridge forced on Day 1!)
         for (let i = 0; i < 2; i++) {
-            const pos = findProgressiveLandSpot(city, mainDepot.x, mainDepot.y, 85, 145, 68);
+            const pos = findProgressiveLandSpot(city, mainDepot.x, mainDepot.y, 85, 145, 68, true);
             const cust = createCustomerNode('S', pos.x, pos.y);
             state.nodes.push(cust);
             spawnOrderForCustomer(cust);
@@ -1753,10 +1792,24 @@
 
     function completeDelivery(customerNode, pkg, fromX = null, fromY = null) {
         const idx = customerNode.waitingOrders.findIndex(o => o.id === pkg.id || o.size === pkg.size);
+        let fulfilledOrder = null;
         if (idx !== -1) {
-            customerNode.waitingOrders.splice(idx, 1);
+            fulfilledOrder = customerNode.waitingOrders.splice(idx, 1)[0];
         }
-        customerNode.overloadTimer = Math.max(0, customerNode.overloadTimer - 0.30);
+        // If this package was originally addressed to a different station of the same size,
+        // reassign customerNode's remaining package in depot storage to that original target so no order is orphaned!
+        if (pkg.targetCustomerId && pkg.targetCustomerId !== customerNode.id) {
+            for (const n of state.nodes) {
+                if (n.kind === 'DEPOT') {
+                    const orphan = n.storage.find(p => p.targetCustomerId === customerNode.id && p.size === pkg.size);
+                    if (orphan) {
+                        orphan.targetCustomerId = pkg.targetCustomerId;
+                        break;
+                    }
+                }
+            }
+        }
+        customerNode.overloadTimer = Math.max(0, customerNode.overloadTimer - 0.38);
         // Gentle spring bounce on receiving station
         customerNode.scaleVel = 2.4;
 
@@ -1944,17 +1997,32 @@
             }
         }
 
-        // 2. LOAD
+        // 2. LOAD (Prioritize packages for the most urgent/overloaded customer stations first!)
         if (node.kind === 'DEPOT' && node.storage.length > 0) {
+            // Clean up any stale packages whose target customer has no waiting orders
             for (let i = node.storage.length - 1; i >= 0; i--) {
+                const c = state.nodes.find(n => n.id === node.storage[i].targetCustomerId);
+                if (!c || c.waitingOrders.length === 0) {
+                    node.storage.splice(i, 1);
+                }
+            }
+
+            // Sort depot storage so most urgent customers & oldest orders are at the front (index 0)
+            node.storage.sort((a, b) => {
+                const ca = state.nodes.find(n => n.id === a.targetCustomerId);
+                const cb = state.nodes.find(n => n.id === b.targetCustomerId);
+                const urgA = ca ? (ca.overloadTimer * 10 + ca.waitingOrders.length) : 0;
+                const urgB = cb ? (cb.overloadTimer * 10 + cb.waitingOrders.length) : 0;
+                if (Math.abs(urgB - urgA) > 0.2) return urgB - urgA;
+                return a.id - b.id;
+            });
+
+            for (let i = 0; i < node.storage.length; i++) {
                 const pkg = node.storage[i];
                 if (!canVehicleLoadPackage(vehicle, pkg.size)) continue;
 
                 const cust = state.nodes.find(n => n.id === pkg.targetCustomerId);
-                if (!cust || cust.waitingOrders.length === 0) {
-                    node.storage.splice(i, 1);
-                    continue;
-                }
+                if (!cust || cust.waitingOrders.length === 0) continue;
 
                 const lineVisitsCustomer = line.nodeIds.some(nid => {
                     const cn = state.nodes.find(x => x.id === nid);
@@ -1978,6 +2046,7 @@
 
                 if (lineVisitsCustomer || lineVisitsTransferHub) {
                     const loaded = node.storage.splice(i, 1)[0];
+                    i--; // adjust index after splice
                     loaded.scale = 0.1;
                     vehicle.cargo.push(loaded);
                     spawnFlyingPackageArc(node.x, node.y, vehicle.x, vehicle.y, loaded.size);
@@ -2135,13 +2204,13 @@
             state.timeOfDay -= 24;
             state.dayCount++;
 
-            // Spawn a 2nd Supply Hauptdepot in outer district at start of Week 3 (like Mini Motorways new factories!)
-            if (state.dayCount === 15) {
+            // Spawn 2nd and 3rd Supply Hauptdepots in outer districts in Week 3 & Week 5 (like Mini Motorways factories!)
+            if (state.dayCount === 15 || state.dayCount === 29) {
                 const city = currentCity();
                 const main0 = state.nodes.find(n => n.kind === 'DEPOT' && n.depotType === 'MAIN');
-                const pos = findProgressiveLandSpot(city, main0 ? main0.x : 500, main0 ? main0.y : 325, 290, 440, 85);
-                const secondMain = createDepotNode('MAIN', pos.x, pos.y);
-                state.nodes.push(secondMain);
+                const pos = findProgressiveLandSpot(city, main0 ? main0.x : 500, main0 ? main0.y : 325, 270, 440, 85, false);
+                const extraMain = createDepotNode('MAIN', pos.x, pos.y);
+                state.nodes.push(extraMain);
                 sfx.playPlaceDepot('XL');
                 showFloatingText(pos.x, pos.y - 24, 'Neues Hauptdepot eröffnet!', '#F59E0B');
             }
@@ -2156,8 +2225,8 @@
 
         // 3. Progressive City Expansion (Minimalist early -> Wide & Chaotic late game!)
         state.spawnTimer += dt;
-        // Week 1 spawns slowly (every 15s); by Week 5+ spawns every 6.5s up to 34 stations!
-        const spawnInterval = Math.max(6.2, 16.0 - state.weekCount * 1.9);
+        // Week 1 spawns slowly (every 15s); by Week 5+ spawns every 6.5s up to 36 stations!
+        const spawnInterval = Math.max(6.4, 16.2 - state.weekCount * 1.85);
         const maxCustomers = Math.min(36, 5 + state.weekCount * 6);
         const currentCustomers = state.nodes.filter(n => n.kind === 'CUSTOMER').length;
 
@@ -2173,37 +2242,54 @@
             let demandType = 'S';
             const r = Math.random();
             if (state.dayCount >= 4 && state.weekCount === 1) {
-                demandType = r < 0.62 ? 'S' : 'L';
+                demandType = r < 0.65 ? 'S' : 'L';
             } else if (state.weekCount === 2) {
-                demandType = r < 0.50 ? 'S' : (r < 0.85 ? 'L' : 'XL');
+                demandType = r < 0.52 ? 'S' : (r < 0.86 ? 'L' : 'XL');
             } else if (state.weekCount >= 3) {
-                demandType = r < 0.42 ? 'S' : (r < 0.76 ? 'L' : 'XL');
-            }
-
-            // First time an XL Customer spawns, ensure player has at least 1 Cybercar unlocked so it's always solvable!
-            if (demandType === 'XL' && !state.everUnlocked.car) {
-                state.everUnlocked.car = true;
-                state.inventory.car += 1;
-                showFloatingText(mainDepot.x, mainDepot.y - 28, 'XL-Schwerlast erschienen: +1 Cybercar freigeschaltet!', '#8B5CF6');
-                updateAllUI();
+                demandType = r < 0.44 ? 'S' : (r < 0.78 ? 'L' : 'XL');
             }
 
             // Distance from center expands organically each week -> triggers automatic camera zoom-out!
             const minR = Math.min(220, 75 + state.dayCount * 6);
             const maxR = Math.min(480, 155 + state.dayCount * 14);
-            const pos = findProgressiveLandSpot(city, mainDepot.x, mainDepot.y, minR, maxR, 58);
+            const preferDry = (state.dayCount <= 2) || (state.inventory.bridges <= 0);
+            const pos = findProgressiveLandSpot(city, mainDepot.x, mainDepot.y, minR, maxR, 58, preferDry);
+
+            // Dramaturgy fairness check: if the new station spawned across water from ALL existing depots & connected stations
+            // and the player currently has 0 bridges, grant +1 emergency bridge so the station is always reachable!
+            let reachableWithoutNewBridge = false;
+            for (const n of state.nodes) {
+                const isConnectedOrDepot = n.kind === 'DEPOT' || state.lines.some(l => l.nodeIds.includes(n.id));
+                if (isConnectedOrDepot && !doesMetroCorridorCrossWater(n.x, n.y, pos.x, pos.y, city)) {
+                    reachableWithoutNewBridge = true;
+                    break;
+                }
+            }
+            if (!reachableWithoutNewBridge && state.inventory.bridges <= 0) {
+                state.inventory.bridges += 1;
+                showFloatingText(pos.x, pos.y - 28, 'Neues Ufer erschlossen: +1 Brücke!', '#38BDF8');
+            }
+
+            // First time an XL Customer spawns, ensure player has Cybercar unlocked + at least 1 available!
+            if (demandType === 'XL' && !state.everUnlocked.car) {
+                state.everUnlocked.car = true;
+                state.inventory.car += 1;
+                if (state.inventory.bridges < 1) state.inventory.bridges += 1;
+                showFloatingText(mainDepot.x, mainDepot.y - 28, 'XL-Schwerlast erschienen: +1 Cybercar freigeschaltet!', '#8B5CF6');
+            }
 
             const cust = createCustomerNode(demandType, pos.x, pos.y);
             state.nodes.push(cust);
             spawnOrderForCustomer(cust);
+            updateAllUI();
         }
 
         // 4. Escalating Package Demand & Late-Game Rush-Hour Waves
         state.packageTimer += dt;
         // Rush hour between 16:00 and 20:00 each day intensifies order generation in later weeks
         const isRushHour = state.timeOfDay >= 16 && state.timeOfDay <= 20;
-        const rushMultiplier = isRushHour ? (1 + state.weekCount * 0.18) : 1.0;
-        const baseOrderInterval = Math.max(0.75, (4.8 - currentCustomers * 0.11 - state.weekCount * 0.25) / rushMultiplier);
+        const rushMultiplier = isRushHour ? (1 + state.weekCount * 0.16) : 1.0;
+        const baseOrderInterval = Math.max(0.82, (4.9 - currentCustomers * 0.105 - state.weekCount * 0.22) / rushMultiplier);
 
         if (state.packageTimer >= baseOrderInterval) {
             state.packageTimer = 0;
@@ -2212,7 +2298,7 @@
                 const c = customers[Math.floor(Math.random() * customers.length)];
                 spawnOrderForCustomer(c);
                 // In late game (Week 4+), occasional double-order surge!
-                if (state.weekCount >= 4 && Math.random() < 0.35) {
+                if (state.weekCount >= 4 && Math.random() < 0.32) {
                     const c2 = customers[Math.floor(Math.random() * customers.length)];
                     spawnOrderForCustomer(c2);
                 }
@@ -2223,12 +2309,12 @@
         updateDrones(dt);
         updateLineVehicles(dt);
 
-        // 5. Station Overcrowding & Radial Urgency Timers (Mini Metro / Motorways tension)
+        // 5. Station Overcrowding & Radial Urgency Timers (Mini Metro / Motorways tension, balanced for deep runs)
         let maxUrgency = 0;
         for (const n of state.nodes) {
             if (n.kind !== 'CUSTOMER') continue;
-            if (n.waitingOrders.length > 4) {
-                const rate = (n.waitingOrders.length - 3.5) * (0.018 + state.weekCount * 0.002);
+            if (n.waitingOrders.length > 5) {
+                const rate = (n.waitingOrders.length - 4.5) * (0.014 + state.weekCount * 0.0016);
                 n.overloadTimer += dt * rate;
                 if (n.overloadTimer > maxUrgency) maxUrgency = n.overloadTimer;
 
@@ -2243,7 +2329,7 @@
                     }
                 }
             } else {
-                n.overloadTimer = Math.max(0, n.overloadTimer - dt * 0.09);
+                n.overloadTimer = Math.max(0, n.overloadTimer - dt * 0.11);
             }
         }
 
@@ -3204,14 +3290,18 @@
                 document.getElementById('uiHintBanner').classList.add('opacity-0');
             }
 
+            const needsXL = (nodeB.demandType === 'XL' || nodeA.demandType === 'XL');
             if (line.vehicles.length === 0) {
-                if (state.inventory.car > 0 && (nodeB.demandType === 'XL' || nodeA.demandType === 'XL')) {
+                if (state.inventory.car > 0 && needsXL) {
                     addVehicleToLine(line, 'car', false);
                 } else if (state.inventory.bike > 0) {
                     addVehicleToLine(line, 'bike', false);
                 } else if (state.inventory.car > 0) {
                     addVehicleToLine(line, 'car', false);
                 }
+            } else if (needsXL && !line.vehicles.some(v => v.type === 'car') && state.inventory.car > 0) {
+                addVehicleToLine(line, 'car', false);
+                showFloatingText(nodeB.x, nodeB.y - 22, 'Cybercar für XL-Station zugewiesen!', '#8B5CF6');
             }
             updateAllUI();
         }
@@ -3793,36 +3883,52 @@
         document.getElementById('clockHandMin').style.transform = `rotate(${minDeg}deg)`;
     }
 
-    // Authentic Mini Motorways Weekly Upgrade Choices (Progressive Freedom!)
+    // Authentic Mini Motorways Weekly Upgrade Choices (Progressive Freedom & Rich Resource Scaling!)
     function getWeeklyUpgradeChoices() {
         const pool = [];
 
-        // Option A: New Logistics Line + Cyberbike (if < 7 lines unlocked)
+        // Option A: New Logistics Line + 2 Cyberbikes + 1 Bridge (or Express Mega-Fleet if all 7 lines unlocked)
         if (state.unlockedLines < LINE_COLORS.length) {
             const nextColor = LINE_COLORS[state.unlockedLines];
             pool.push({
-                title: 'Neue Linie & Bike',
-                subtitle: `+1 ${nextColor.name} & +1 Cyberbike`,
-                desc: 'Erschließe einen neuen unabhängigen Stadtkorridor.',
+                title: 'Neue Linie & Express',
+                subtitle: `+1 ${nextColor.name}, +2 Cyberbikes & +1 Brücke`,
+                desc: 'Erschließe einen neuen unabhängigen Stadtkorridor inklusive Flussquerung.',
                 badgeColor: nextColor.hex,
                 iconText: '+Linie',
                 apply: () => {
                     state.unlockedLines = Math.min(LINE_COLORS.length, state.unlockedLines + 1);
-                    state.inventory.bike += 1;
+                    state.inventory.bike += 2;
+                    state.inventory.bridges += 1;
                     state.selectedLineId = state.unlockedLines - 1;
+                }
+            });
+        } else {
+            pool.push({
+                title: 'Express-Großflotte',
+                subtitle: '+3 Cyberbikes & +2 Brücken',
+                desc: 'Maximale Taktfrequenz auf deinen bestehenden Linien plus neue Flussquerungen.',
+                badgeColor: '#10B981',
+                iconText: '3×BIKE',
+                apply: () => {
+                    state.inventory.bike += 3;
+                    state.inventory.bridges += 2;
                 }
             });
         }
 
-        // Option B: Heavy Cargo Fleet (Cybercars + XL or L Hub)
+        // Option B: Heavy Cargo Fleet (Cybercars + XL or L Hub + 1 Bridge)
         pool.push({
             title: 'Schwerlast-Flotte',
-            subtitle: state.weekCount <= 2 ? '+1 Cybercar & +1 L-Zwischenlager' : '+2 Cybercars & +1 XL-Mega-Hub',
+            subtitle: state.weekCount <= 2
+                ? '+1 Cybercar, +1 L-Hub & +1 Brücke'
+                : '+2 Cybercars, +1 XL-Mega-Hub & +1 Brücke',
             desc: 'Transportiert XL-Schwerlastpakete (1×), L-Pakete (2×) oder 4× S-Pakete.',
             badgeColor: '#8B5CF6',
             iconText: 'CAR',
             apply: () => {
                 state.everUnlocked.car = true;
+                state.inventory.bridges += 1;
                 if (state.weekCount <= 2) {
                     state.inventory.car += 1;
                     state.everUnlocked.depot_L = true;
@@ -3835,42 +3941,33 @@
             }
         });
 
-        // Option C: Air Bridge (Flugdrohnen + S-Zwischenlager)
+        // Option C: Air Bridge & Bridges (2 Flugdrohnen + Zwischenlager + 2 Brücken)
         pool.push({
-            title: 'Luftbrücke',
-            subtitle: '+2 Flugdrohnen & +1 S-Zwischenlager',
-            desc: 'Fliegt S-Pakete direkt über Flüsse und entlastet deine Bodenlinien.',
+            title: 'Luftbrücke & Brückenbau',
+            subtitle: '+2 Flugdrohnen, +1 S-Lager & +2 Brücken',
+            desc: 'Fliegt S-Pakete direkt über Flüsse und erweitert deine Brücken-Reserve deutlich.',
             badgeColor: '#06B6D4',
-            iconText: 'AIR',
+            iconText: 'AIR+BR',
             apply: () => {
                 state.everUnlocked.depot_S = true;
                 state.inventory.drone += 2;
                 state.inventory.depot_S += 1;
-            }
-        });
-
-        // Option D: Express Expansion (Cyberbikes + Bridges)
-        pool.push({
-            title: 'Express & Brücken',
-            subtitle: '+2 Cyberbikes & +2 Brücken',
-            desc: 'Hohe Frequenz für S- und L-Pakete inklusive Flussquerungen.',
-            badgeColor: '#10B981',
-            iconText: 'BIKE',
-            apply: () => {
-                state.inventory.bike += 2;
                 state.inventory.bridges += 2;
             }
         });
 
-        // Always prioritize offering a new line or Cybercar early on, then shuffle 2 choices
-        const shuffled = pool.sort(() => Math.random() - 0.5);
-        return shuffled.slice(0, 2);
+        // Return all 3 distinct strategic choices so the player never misses out on bridges, lines, or cars!
+        return pool;
     }
 
     function triggerWeeklyUpgradeModal() {
         const prevSpeed = state.gameSpeed || 1;
         setGameSpeed(0);
         sfx.playWeeklyChord();
+
+        // Automatic weekly base bonus: +1 Bridge every single week so river cities are always solvable long-term!
+        state.inventory.bridges += 1;
+        updateAllUI();
 
         document.getElementById('upgradeWeekTitle').textContent = `Woche ${state.weekCount}`;
         const container = document.getElementById('upgradeCardsContainer');
@@ -3880,14 +3977,14 @@
         choices.forEach((pkg, idx) => {
             const card = document.createElement('button');
             card.style.animationDelay = `${idx * 90}ms`;
-            card.className = 'dpc-pill upgrade-card-anim rounded-[32px] p-6 text-center flex flex-col items-center justify-between hover:scale-105 active:scale-95 cursor-pointer';
+            card.className = 'dpc-pill upgrade-card-anim rounded-[32px] p-5 text-center flex flex-col items-center justify-between hover:scale-105 active:scale-95 cursor-pointer';
             card.innerHTML = `
-                <div class="w-20 h-20 rounded-full flex items-center justify-center text-white font-extrabold text-lg shadow-lg mb-4" style="background:${pkg.badgeColor}">
+                <div class="w-16 h-16 rounded-full flex items-center justify-center text-white font-extrabold text-sm shadow-lg mb-3" style="background:${pkg.badgeColor}">
                     ${pkg.iconText}
                 </div>
-                <div class="text-xs font-extrabold uppercase tracking-wider opacity-55 mb-1">${pkg.title}</div>
-                <h3 class="text-lg font-extrabold leading-snug mb-2">${pkg.subtitle}</h3>
-                <p class="text-xs opacity-70 leading-relaxed mb-5">${pkg.desc}</p>
+                <div class="text-[11px] font-extrabold uppercase tracking-wider opacity-55 mb-1">${pkg.title}</div>
+                <h3 class="text-base font-extrabold leading-snug mb-2">${pkg.subtitle}</h3>
+                <p class="text-xs opacity-70 leading-relaxed mb-4">${pkg.desc}</p>
                 <div class="px-5 py-2 rounded-full text-xs font-extrabold text-white shadow" style="background:${pkg.badgeColor}">
                     Auswählen
                 </div>
@@ -4055,6 +4152,47 @@
         sfx.enabled = !sfx.enabled;
         document.getElementById('iconSoundOn').classList.toggle('hidden', !sfx.enabled);
         document.getElementById('iconSoundOff').classList.toggle('hidden', sfx.enabled);
+    });
+
+    // Optional Background Music ("Enzo Cage – Bright") via Music Icon Button
+    const bgMusic = new Audio('https://www.enzocage.de/mp3/enzo_cage_sinus/enzo_cage_bright.mp3');
+    bgMusic.loop = true;
+    bgMusic.volume = 0.42;
+    bgMusic.preload = 'none';
+    let bgMusicPlaying = false;
+
+    function updateMusicButtonUI() {
+        const btn = document.getElementById('btnToggleMusic');
+        const slash = document.getElementById('iconMusicSlash');
+        const note = document.getElementById('iconMusicNote');
+        if (bgMusicPlaying) {
+            slash.classList.add('hidden');
+            note.classList.add('text-amber-500');
+            btn.classList.add('ring-2', 'ring-amber-500');
+            btn.classList.remove('opacity-75');
+        } else {
+            slash.classList.remove('hidden');
+            note.classList.remove('text-amber-500');
+            btn.classList.remove('ring-2', 'ring-amber-500');
+            btn.classList.add('opacity-75');
+        }
+    }
+
+    document.getElementById('btnToggleMusic').addEventListener('click', () => {
+        if (!bgMusicPlaying) {
+            bgMusic.play().then(() => {
+                bgMusicPlaying = true;
+                updateMusicButtonUI();
+                showFloatingText(state.cam.x, state.cam.y - 25, '♪ Musik an: Enzo Cage – Bright', '#F59E0B');
+            }).catch(() => {
+                showFloatingText(state.cam.x, state.cam.y - 25, 'Musik konnte nicht geladen werden', '#EF4444');
+            });
+        } else {
+            bgMusic.pause();
+            bgMusicPlaying = false;
+            updateMusicButtonUI();
+            showFloatingText(state.cam.x, state.cam.y - 25, '♪ Hintergrundmusik pausiert', '#6E7685');
+        }
     });
 
     document.getElementById('btnOpenCityModal').addEventListener('click', () => {
