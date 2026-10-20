@@ -121,8 +121,30 @@ function updateTokenUI(toolKey, badgeId) {
     }
 }
 
+function updateGoalUI() {
+    const score = state.score;
+    const t1 = STAR_TARGETS[0];
+    const t2 = STAR_TARGETS[1];
+    const t3 = STAR_TARGETS[2];
+
+    const stars = score >= t3 ? '★★★' : (score >= t2 ? '★★☆' : (score >= t1 ? '★☆☆' : '☆☆☆'));
+    const nextTarget = score < t1 ? t1 : (score < t2 ? t2 : t3);
+    const prevTarget = score < t1 ? 0 : (score < t2 ? t1 : (score < t3 ? t2 : 0));
+    const pct = score >= t3
+        ? 100
+        : Math.min(100, Math.max(0, ((score - prevTarget) / Math.max(1, nextTarget - prevTarget)) * 100));
+
+    const starsEl = document.getElementById('uiStars');
+    const targetEl = document.getElementById('uiGoalTarget');
+    const barEl = document.getElementById('uiGoalBar');
+    if (starsEl) starsEl.textContent = stars;
+    if (targetEl) targetEl.textContent = score >= t3 ? ' · MAX' : `/${nextTarget}`;
+    if (barEl) barEl.style.width = `${pct.toFixed(1)}%`;
+}
+
 function updateAllUI() {
     document.getElementById('uiScore').textContent = state.score;
+    updateGoalUI();
 
     updateTokenUI('bike', 'badgeBike');
     updateTokenUI('car', 'badgeCar');
@@ -197,7 +219,7 @@ function getWeeklyUpgradeChoices() {
             iconText: '+LINE',
             apply: () => {
                 state.unlockedLines = Math.min(LINE_COLORS.length, state.unlockedLines + 1);
-                state.inventory.bike += 2;
+                state.inventory.bike += 1;
                 state.inventory.bridges += 1;
                 state.selectedLineId = state.unlockedLines - 1;
             }
@@ -208,10 +230,10 @@ function getWeeklyUpgradeChoices() {
             subtitle: t('upg_express_sub'),
             desc: t('upg_express_desc'),
             badgeColor: '#10B981',
-            iconText: '3×BIKE',
+            iconText: '2×BIKE',
             apply: () => {
-                state.inventory.bike += 3;
-                state.inventory.bridges += 2;
+                state.inventory.bike += 2;
+                state.inventory.bridges += 1;
             }
         });
     }
@@ -224,15 +246,15 @@ function getWeeklyUpgradeChoices() {
         iconText: 'CAR',
         apply: () => {
             state.everUnlocked.car = true;
-            state.inventory.bridges += 1;
             if (state.weekCount <= 2) {
                 state.inventory.car += 1;
                 state.everUnlocked.depot_L = true;
                 state.inventory.depot_L += 1;
             } else {
-                state.inventory.car += 2;
+                state.inventory.car += 1;
                 state.everUnlocked.depot_XL = true;
                 state.inventory.depot_XL += 1;
+                state.inventory.bridges += 1;
             }
         }
     });
@@ -245,7 +267,7 @@ function getWeeklyUpgradeChoices() {
         iconText: 'AIR+BR',
         apply: () => {
             state.everUnlocked.depot_S = true;
-            state.inventory.drone += 2;
+            state.inventory.drone += 1;
             state.inventory.depot_S += 1;
             state.inventory.bridges += 2;
         }
@@ -258,8 +280,6 @@ function triggerWeeklyUpgradeModal() {
     const prevSpeed = state.gameSpeed || 1;
     setGameSpeed(0);
     sfx.playWeeklyChord();
-
-    state.inventory.bridges += 1;
     updateAllUI();
 
     document.getElementById('upgradeWeekTitle').textContent = t('upg_week', { w: state.weekCount });
@@ -298,23 +318,61 @@ function triggerWeeklyUpgradeModal() {
 function triggerGameOver(overloadedNode) {
     setGameSpeed(0);
     const city = currentCity();
+    saveCityRecord(city.id, state.score, state.starsEarned);
+
     document.getElementById('goTitle').textContent = t('go_title_city', { city: city.name });
-    document.getElementById('goSubtitle').textContent = t('go_sub_station', { type: overloadedNode.demandType });
+    if (overloadedNode && overloadedNode.kind === 'DEPOT') {
+        document.getElementById('goSubtitle').textContent = t('go_sub_depot', { depot: getDepotLabel(overloadedNode.depotType) });
+    } else {
+        document.getElementById('goSubtitle').textContent = t('go_sub_station', { type: overloadedNode ? overloadedNode.demandType : 'S' });
+    }
     document.getElementById('goScore').textContent = state.score;
     document.getElementById('goDays').textContent = state.dayCount;
     document.getElementById('goDepots').textContent = state.nodes.filter(n => n.kind === 'DEPOT').length;
     document.getElementById('gameOverModal').classList.remove('hidden');
 }
 
+function triggerVictoryModal() {
+    setGameSpeed(0);
+    sfx.playWeeklyChord();
+    const city = currentCity();
+    saveCityRecord(city.id, state.score, 3);
+
+    const vicTitle = document.getElementById('vicTitle');
+    const vicSubtitle = document.getElementById('vicSubtitle');
+    if (vicTitle) vicTitle.textContent = t('vic_title_city', { city: city.name });
+    if (vicSubtitle) vicSubtitle.textContent = t('vic_sub_city', { target: STAR_TARGETS[2] });
+    document.getElementById('vicScore').textContent = state.score;
+    document.getElementById('vicDays').textContent = state.dayCount;
+    document.getElementById('vicDepots').textContent = state.nodes.filter(n => n.kind === 'DEPOT').length;
+    document.getElementById('victoryModal').classList.remove('hidden');
+}
+
+document.getElementById('btnVictoryNextCity').addEventListener('click', () => {
+    document.getElementById('victoryModal').classList.add('hidden');
+    const nextIdx = (state.cityIndex + 1) % CITIES.length;
+    initCity(nextIdx);
+});
+
+document.getElementById('btnVictoryOvertime').addEventListener('click', () => {
+    document.getElementById('victoryModal').classList.add('hidden');
+    setGameSpeed(1);
+});
+
 document.getElementById('btnContinueEndless').addEventListener('click', () => {
     state.endlessMode = true;
     for (const n of state.nodes) {
-        if (n.kind === 'CUSTOMER') n.overloadTimer = 0;
+        n.overloadTimer = 0;
+        if (n.kind === 'CUSTOMER' && n.waitingOrders.length > 2) {
+            n.waitingOrders.splice(0, n.waitingOrders.length - 2);
+        } else if (n.kind === 'DEPOT' && n.storage.length > Math.floor(n.capacity * 0.5)) {
+            n.storage.splice(0, Math.floor(n.capacity * 0.4));
+        }
     }
     state.everUnlocked.car = true;
-    state.inventory.drone += 2;
+    state.inventory.drone += 1;
     state.inventory.car += 1;
-    state.inventory.bridges += 2;
+    state.inventory.bridges += 1;
     document.getElementById('gameOverModal').classList.add('hidden');
     updateAllUI();
     setGameSpeed(1);
@@ -340,6 +398,9 @@ function buildCityModalGrid(filterText = '') {
             return;
         }
 
+        const rec = getCityRecord(city.id);
+        const starStr = rec.stars >= 3 ? '★★★' : (rec.stars === 2 ? '★★☆' : (rec.stars === 1 ? '★☆☆' : '☆☆☆'));
+
         const card = document.createElement('button');
         const isCurrent = idx === state.cityIndex;
         card.className = `dpc-pill rounded-3xl p-3.5 text-left flex items-center gap-3.5 hover:scale-[1.02] active:scale-95 transition-transform ${isCurrent ? 'ring-2 ring-amber-500' : ''}`;
@@ -355,9 +416,10 @@ function buildCityModalGrid(filterText = '') {
         info.innerHTML = `
             <div class="flex items-center justify-between gap-1">
                 <span class="font-extrabold text-sm truncate">${city.name}</span>
-                <span class="text-[10px] font-mono-num opacity-55">${city.country}</span>
+                <span class="text-[10px] font-mono-num text-amber-500 font-extrabold">${starStr}</span>
             </div>
             <div class="text-[11px] opacity-65 truncate mt-0.5">${city.riverName}</div>
+            <div class="text-[10px] font-mono-num opacity-45 mt-0.5">${rec.bestScore > 0 ? `Best: ${rec.bestScore}` : city.country}</div>
         `;
 
         card.appendChild(miniCanvas);

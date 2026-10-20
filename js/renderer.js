@@ -439,6 +439,27 @@ function renderGame() {
             const spec = DEPOT_SPECS[n.depotType];
             const r = n.radius;
 
+            if (n.overloadTimer > 0.01) {
+                ctx.save();
+                const pulse = 1 + Math.sin(performance.now() * 0.014) * (0.04 + n.overloadTimer * 0.08);
+                ctx.scale(pulse, pulse);
+
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.16)';
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.arc(0, 0, r + 15, -Math.PI / 2, -Math.PI / 2 + n.overloadTimer * Math.PI * 2);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(0, 0, r + 12, -Math.PI / 2, -Math.PI / 2 + n.overloadTimer * Math.PI * 2);
+                ctx.strokeStyle = '#EF4444';
+                ctx.lineWidth = 4.4;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+                ctx.restore();
+            }
+
             ctx.fillStyle = 'rgba(0,0,0,0.14)';
             ctx.beginPath();
             ctx.arc(0, 3, r + 2, 0, Math.PI * 2);

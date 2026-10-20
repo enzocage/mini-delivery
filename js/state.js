@@ -1,10 +1,39 @@
 /***************************************************************************
  * 4. CORE GAME STATE, AUTO-ZOOM CAMERA & ENTITY MANAGEMENT
  ***************************************************************************/
+const STAR_TARGETS = [100, 220, 350];
+
+function getCityRecord(cityId) {
+    try {
+        const raw = localStorage.getItem('miniDelivery_cityRecords');
+        const map = raw ? JSON.parse(raw) : {};
+        return map[cityId] || { bestScore: 0, stars: 0 };
+    } catch (e) {
+        return { bestScore: 0, stars: 0 };
+    }
+}
+
+function saveCityRecord(cityId, score, stars) {
+    try {
+        const raw = localStorage.getItem('miniDelivery_cityRecords');
+        const map = raw ? JSON.parse(raw) : {};
+        const prev = map[cityId] || { bestScore: 0, stars: 0 };
+        map[cityId] = {
+            bestScore: Math.max(prev.bestScore || 0, score),
+            stars: Math.max(prev.stars || 0, stars)
+        };
+        localStorage.setItem('miniDelivery_cityRecords', JSON.stringify(map));
+    } catch (e) {
+        // Ignore storage errors
+    }
+}
+
 const state = {
     cityIndex: 0,
     nightMode: false,
     endlessMode: false,
+    victoryReached: false,
+    starsEarned: 0,
     gameSpeed: 1,
     score: 0,
     scoreBySize: { S: 0, L: 0, XL: 0 },
@@ -15,27 +44,27 @@ const state = {
     weekCount: 1,
     rushHourPulse: 0,
 
-    // Progressive Unlocks (Starts minimalist with 3 lines like Mini Metro, expands up to 7!)
-    unlockedLines: 3,
+    // Progressive Unlocks (Starts minimalist with 2 lines on Day 1, expands up to 7!)
+    unlockedLines: 2,
     everUnlocked: {
         bike: true,
         drone: true,
         bridges: true,
-        depot_S: true,
+        depot_S: false,
         car: false,
         depot_L: false,
         depot_XL: false
     },
 
-    // Player Inventory (Enough bridges & vehicles from Day 1 to cross rivers & scale far!)
+    // Tight, strategic Day 1 Inventory
     inventory: {
-        depot_S: 1,
+        depot_S: 0,
         depot_L: 0,
         depot_XL: 0,
         drone: 1,
-        bike: 3,
+        bike: 2,
         car: 0,
-        bridges: 3
+        bridges: 1
     },
 
     // Active Tool & Selection
@@ -198,6 +227,8 @@ function initCity(cityIdx) {
 
     resetCameraToAuto();
     state.endlessMode = false;
+    state.victoryReached = false;
+    state.starsEarned = 0;
     state.gameSpeed = 1;
     state.score = 0;
     state.scoreBySize = { S: 0, L: 0, XL: 0 };
@@ -206,24 +237,24 @@ function initCity(cityIdx) {
     state.weekCount = 1;
     state.rushHourPulse = 0;
 
-    state.unlockedLines = 3;
+    state.unlockedLines = 2;
     state.everUnlocked = {
         bike: true,
         drone: true,
         bridges: true,
-        depot_S: true,
+        depot_S: false,
         car: false,
         depot_L: false,
         depot_XL: false
     };
     state.inventory = {
-        depot_S: 1,
+        depot_S: 0,
         depot_L: 0,
         depot_XL: 0,
         drone: 1,
-        bike: 3,
+        bike: 2,
         car: 0,
-        bridges: 3
+        bridges: 1
     };
 
     state.activeTool = 'route';
@@ -266,6 +297,8 @@ function initCity(cityIdx) {
     document.getElementById('uiCityName').textContent = city.name;
     document.getElementById('uiCityRiver').textContent = city.riverName.split('&')[0].split(',')[0].trim();
     document.getElementById('nodeInspector').classList.add('hidden');
+    const vicModal = document.getElementById('victoryModal');
+    if (vicModal) vicModal.classList.add('hidden');
 
     const hintBanner = document.getElementById('uiHintBanner');
     hintBanner.classList.remove('opacity-0');
@@ -290,6 +323,7 @@ function createDepotNode(depotType, x, y) {
         allowedSizes: spec.allowed,
         droneRange: spec.droneRange,
         storage: [],
+        overloadTimer: 0,
         scale: 0.05,
         scaleVel: 0,
         pulsePhase: Math.random() * Math.PI * 2
@@ -306,7 +340,7 @@ function createCustomerNode(demandType, x, y) {
         x, y,
         radius: demandType === 'XL' ? 16.5 : (demandType === 'L' ? 14.5 : 13),
         waitingOrders: [],
-        maxOrders: 6,
+        maxOrders: demandType === 'XL' ? 3 : 4,
         overloadTimer: 0,
         scale: 0.05,
         scaleVel: 0,
@@ -319,7 +353,7 @@ function createCustomerNode(demandType, x, y) {
 }
 
 function spawnOrderForCustomer(customer) {
-    if (customer.waitingOrders.length >= 8) return;
+    if (customer.waitingOrders.length >= 10) return;
     let size = customer.demandType;
     if (customer.demandType === 'L' && Math.random() < 0.25) size = 'S';
     if (customer.demandType === 'XL' && Math.random() < 0.20) size = 'L';

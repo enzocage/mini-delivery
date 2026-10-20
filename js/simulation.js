@@ -45,7 +45,7 @@ function completeDelivery(customerNode, pkg, fromX = null, fromY = null) {
             }
         }
     }
-    customerNode.overloadTimer = Math.max(0, customerNode.overloadTimer - 0.38);
+    customerNode.overloadTimer = Math.max(0, customerNode.overloadTimer - 0.14);
     customerNode.scaleVel = 2.4;
 
     if (fromX !== null && fromY !== null) {
@@ -55,11 +55,38 @@ function completeDelivery(customerNode, pkg, fromX = null, fromY = null) {
     state.score++;
     state.scoreBySize[pkg.size] = (state.scoreBySize[pkg.size] || 0) + 1;
 
+    // Check 3-Act City Mastery Milestones (100 ★ / 220 ★★ / 350 ★★★)
+    const city = currentCity();
+    if (state.score >= STAR_TARGETS[0] && state.starsEarned < 1) {
+        state.starsEarned = 1;
+        saveCityRecord(city.id, state.score, 1);
+        sfx.playWeeklyChord();
+        showFloatingText(customerNode.x, customerNode.y - 26, t('msg_star_1'), '#F59E0B');
+    }
+    if (state.score >= STAR_TARGETS[1] && state.starsEarned < 2) {
+        state.starsEarned = 2;
+        saveCityRecord(city.id, state.score, 2);
+        sfx.playWeeklyChord();
+        showFloatingText(customerNode.x, customerNode.y - 26, t('msg_star_2'), '#F59E0B');
+    }
+    if (state.score >= STAR_TARGETS[2] && state.starsEarned < 3) {
+        state.starsEarned = 3;
+        saveCityRecord(city.id, state.score, 3);
+        if (!state.victoryReached && !state.endlessMode) {
+            state.victoryReached = true;
+            triggerVictoryModal();
+        }
+    } else {
+        saveCityRecord(city.id, state.score, state.starsEarned);
+    }
+
     const scoreEl = document.getElementById('uiScore');
     scoreEl.textContent = state.score;
     scoreEl.classList.remove('score-pop');
     void scoreEl.offsetWidth;
     scoreEl.classList.add('score-pop');
+
+    if (typeof updateGoalUI === 'function') updateGoalUI();
 
     const col = pkg.size === 'S' ? '#0EA5E9' : (pkg.size === 'L' ? '#F59E0B' : '#F43F5E');
     state.ripples.push({ x: customerNode.x, y: customerNode.y, r: customerNode.radius * 0.6, maxR: 44, color: col, alpha: 0.85 });
@@ -432,7 +459,7 @@ function updateSimulation(rawDt) {
         state.timeOfDay -= 24;
         state.dayCount++;
 
-        if (state.dayCount === 15 || state.dayCount === 29) {
+        if (state.dayCount === 22) {
             const city = currentCity();
             const main0 = state.nodes.find(n => n.kind === 'DEPOT' && n.depotType === 'MAIN');
             const pos = findProgressiveLandSpot(city, main0 ? main0.x : 500, main0 ? main0.y : 325, 270, 440, 85, false);
@@ -451,8 +478,8 @@ function updateSimulation(rawDt) {
     updateClockUI();
 
     state.spawnTimer += dt;
-    const spawnInterval = Math.max(6.4, 16.2 - state.weekCount * 1.85);
-    const maxCustomers = Math.min(36, 5 + state.weekCount * 6);
+    const spawnInterval = Math.max(4.8, 12.8 - state.weekCount * 1.55);
+    const maxCustomers = Math.min(42, 6 + state.weekCount * 6);
     const currentCustomers = state.nodes.filter(n => n.kind === 'CUSTOMER').length;
 
     if (state.spawnTimer >= spawnInterval && currentCustomers < maxCustomers) {
@@ -462,36 +489,22 @@ function updateSimulation(rawDt) {
 
         let demandType = 'S';
         const r = Math.random();
-        if (state.dayCount >= 4 && state.weekCount === 1) {
-            demandType = r < 0.65 ? 'S' : 'L';
+        if (state.dayCount >= 3 && state.weekCount === 1) {
+            demandType = r < 0.56 ? 'S' : 'L';
         } else if (state.weekCount === 2) {
-            demandType = r < 0.52 ? 'S' : (r < 0.86 ? 'L' : 'XL');
-        } else if (state.weekCount >= 3) {
             demandType = r < 0.44 ? 'S' : (r < 0.78 ? 'L' : 'XL');
+        } else if (state.weekCount >= 3) {
+            demandType = r < 0.36 ? 'S' : (r < 0.68 ? 'L' : 'XL');
         }
 
-        const minR = Math.min(220, 75 + state.dayCount * 6);
-        const maxR = Math.min(480, 155 + state.dayCount * 14);
-        const preferDry = (state.dayCount <= 2) || (state.inventory.bridges <= 0);
-        const pos = findProgressiveLandSpot(city, mainDepot.x, mainDepot.y, minR, maxR, 58, preferDry);
-
-        let reachableWithoutNewBridge = false;
-        for (const n of state.nodes) {
-            const isConnectedOrDepot = n.kind === 'DEPOT' || state.lines.some(l => l.nodeIds.includes(n.id));
-            if (isConnectedOrDepot && !doesMetroCorridorCrossWater(n.x, n.y, pos.x, pos.y, city)) {
-                reachableWithoutNewBridge = true;
-                break;
-            }
-        }
-        if (!reachableWithoutNewBridge && state.inventory.bridges <= 0) {
-            state.inventory.bridges += 1;
-            showFloatingText(pos.x, pos.y - 28, t('msg_new_bank_bridge'), '#38BDF8');
-        }
+        const minR = Math.min(230, 80 + state.dayCount * 7);
+        const maxR = Math.min(485, 160 + state.dayCount * 15);
+        const preferDry = (state.dayCount <= 2);
+        const pos = findProgressiveLandSpot(city, mainDepot.x, mainDepot.y, minR, maxR, 56, preferDry);
 
         if (demandType === 'XL' && !state.everUnlocked.car) {
             state.everUnlocked.car = true;
             state.inventory.car += 1;
-            if (state.inventory.bridges < 1) state.inventory.bridges += 1;
             showFloatingText(mainDepot.x, mainDepot.y - 28, t('msg_xl_spawn_car'), '#8B5CF6');
         }
 
@@ -503,8 +516,8 @@ function updateSimulation(rawDt) {
 
     state.packageTimer += dt;
     const isRushHour = state.timeOfDay >= 16 && state.timeOfDay <= 20;
-    const rushMultiplier = isRushHour ? (1 + state.weekCount * 0.16) : 1.0;
-    const baseOrderInterval = Math.max(0.82, (4.9 - currentCustomers * 0.105 - state.weekCount * 0.22) / rushMultiplier);
+    const rushMultiplier = isRushHour ? (1.35 + state.weekCount * 0.18) : 1.0;
+    const baseOrderInterval = Math.max(0.55, (3.45 - currentCustomers * 0.095 - state.weekCount * 0.24) / rushMultiplier);
 
     if (state.packageTimer >= baseOrderInterval) {
         state.packageTimer = 0;
@@ -512,7 +525,8 @@ function updateSimulation(rawDt) {
         if (customers.length > 0) {
             const c = customers[Math.floor(Math.random() * customers.length)];
             spawnOrderForCustomer(c);
-            if (state.weekCount >= 4 && Math.random() < 0.32) {
+            const extraBurstChance = (isRushHour ? 0.35 : 0.14) + Math.max(0, state.weekCount - 2) * 0.10;
+            if (state.weekCount >= 2 && Math.random() < extraBurstChance) {
                 const c2 = customers[Math.floor(Math.random() * customers.length)];
                 spawnOrderForCustomer(c2);
             }
@@ -523,26 +537,54 @@ function updateSimulation(rawDt) {
     updateDrones(dt);
     updateLineVehicles(dt);
 
+    // DUAL LOSE CONDITIONS:
+    // 1) Customer Station Escalation (>= 4 waiting orders for S/L, >= 3 for XL)
+    // 2) Depot / Hub Gridlock (>= 85% storage capacity full)
     let maxUrgency = 0;
     for (const n of state.nodes) {
-        if (n.kind !== 'CUSTOMER') continue;
-        if (n.waitingOrders.length > 5) {
-            const rate = (n.waitingOrders.length - 4.5) * (0.014 + state.weekCount * 0.0016);
-            n.overloadTimer += dt * rate;
-            if (n.overloadTimer > maxUrgency) maxUrgency = n.overloadTimer;
+        if (n.kind === 'CUSTOMER') {
+            const threshold = n.maxOrders || 4;
+            if (n.waitingOrders.length >= threshold) {
+                const excess = (n.waitingOrders.length - threshold) + 1;
+                const weekScale = 1 + (state.weekCount - 1) * 0.10;
+                const rate = (0.036 + excess * excess * 0.0085) * weekScale;
+                n.overloadTimer += dt * rate;
+                if (n.overloadTimer > maxUrgency) maxUrgency = n.overloadTimer;
 
-            if (n.overloadTimer >= 1.0) {
-                if (state.endlessMode) {
-                    n.waitingOrders.splice(0, 3);
-                    n.overloadTimer = 0.15;
-                    n.scaleVel = 2.0;
-                } else {
-                    triggerGameOver(n);
-                    return;
+                if (n.overloadTimer >= 1.0) {
+                    if (state.endlessMode) {
+                        n.waitingOrders.splice(0, 3);
+                        n.overloadTimer = 0.2;
+                        n.scaleVel = 2.0;
+                    } else {
+                        triggerGameOver(n);
+                        return;
+                    }
                 }
+            } else {
+                n.overloadTimer = Math.max(0, n.overloadTimer - dt * 0.065);
             }
-        } else {
-            n.overloadTimer = Math.max(0, n.overloadTimer - dt * 0.11);
+        } else if (n.kind === 'DEPOT') {
+            const critCount = Math.ceil(n.capacity * 0.85);
+            if (n.storage.length >= critCount) {
+                const fillRatio = n.storage.length / Math.max(1, n.capacity);
+                const rate = 0.034 + Math.max(0, fillRatio - 0.85) * 0.22;
+                n.overloadTimer = (n.overloadTimer || 0) + dt * rate;
+                if (n.overloadTimer > maxUrgency) maxUrgency = n.overloadTimer;
+
+                if (n.overloadTimer >= 1.0) {
+                    if (state.endlessMode) {
+                        n.storage.splice(0, Math.ceil(n.capacity * 0.35));
+                        n.overloadTimer = 0.2;
+                        n.scaleVel = 2.0;
+                    } else {
+                        triggerGameOver(n);
+                        return;
+                    }
+                }
+            } else {
+                n.overloadTimer = Math.max(0, (n.overloadTimer || 0) - dt * 0.08);
+            }
         }
     }
 

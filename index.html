@@ -171,9 +171,20 @@
     <!-- ICONIC MINI METRO / MINI MOTORWAYS TOP-RIGHT HUD: SCORE, DAY & ANALOG CLOCK + SPEED -->
     <div class="fixed top-4 right-4 z-20 flex items-center gap-3 pointer-events-none">
         <div class="dpc-pill pointer-events-auto rounded-full px-4 py-1.5 flex items-center gap-3">
-            <div class="flex items-center gap-1.5" data-i18n-title="tip_score" title="Delivered Packages">
+            <div class="flex items-center gap-2" data-i18n-title="tip_score" title="Delivered Packages &amp; City Mastery Target">
                 <svg class="w-4 h-4 opacity-55" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5z"/></svg>
-                <span id="uiScore" class="font-mono-num font-extrabold text-xl sm:text-2xl tracking-tight leading-none">0</span>
+                <div class="flex flex-col items-end leading-none">
+                    <div class="flex items-baseline gap-1">
+                        <span id="uiScore" class="font-mono-num font-extrabold text-xl sm:text-2xl tracking-tight leading-none">0</span>
+                        <span id="uiGoalTarget" class="font-mono-num text-[11px] font-bold opacity-45">/100</span>
+                    </div>
+                    <div class="flex items-center gap-1 mt-0.5">
+                        <span id="uiStars" class="text-[10px] tracking-widest text-amber-500 font-extrabold leading-none">☆☆☆</span>
+                        <div class="w-12 h-1 rounded-full bg-current/15 overflow-hidden">
+                            <div id="uiGoalBar" class="h-full bg-amber-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="h-5 w-px bg-current opacity-15"></div>
@@ -365,6 +376,41 @@
                 </button>
                 <button id="btnRestartCity" data-i18n="go_restart" class="py-3 px-5 rounded-full bg-black/10 dark:bg-white/10 font-extrabold text-xs uppercase tracking-wider transition-transform active:scale-95">
                     Restart City
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3B: VICTORY / METROPOLIS MASTERED (★★★) -->
+    <div id="victoryModal" class="fixed inset-0 z-40 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="dpc-pill rounded-[32px] max-w-md w-full p-7 text-center shadow-2xl upgrade-card-anim">
+            <div class="inline-flex items-center gap-1.5 px-4 py-1 rounded-full bg-amber-500/15 text-amber-500 font-extrabold text-sm tracking-widest mb-3">
+                ★★★
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1" id="vicTitle">Metropolis Mastered!</h2>
+            <p class="text-xs opacity-70 mb-6" id="vicSubtitle">Your urban logistics network handled peak metropolis demand without collapsing.</p>
+
+            <div class="grid grid-cols-3 gap-3 mb-6 text-center">
+                <div class="p-3 rounded-2xl bg-black/5 dark:bg-white/5">
+                    <div data-i18n="go_delivered" class="text-[10px] uppercase font-bold opacity-55">Delivered</div>
+                    <div class="font-mono-num text-2xl font-extrabold text-amber-500" id="vicScore">350</div>
+                </div>
+                <div class="p-3 rounded-2xl bg-black/5 dark:bg-white/5">
+                    <div data-i18n="go_days" class="text-[10px] uppercase font-bold opacity-55">Days</div>
+                    <div class="font-mono-num text-2xl font-extrabold" id="vicDays">0</div>
+                </div>
+                <div class="p-3 rounded-2xl bg-black/5 dark:bg-white/5">
+                    <div data-i18n="go_hubs" class="text-[10px] uppercase font-bold opacity-55">Hubs</div>
+                    <div class="font-mono-num text-2xl font-extrabold text-emerald-500" id="vicDepots">0</div>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button id="btnVictoryNextCity" data-i18n="vic_next_city" class="flex-1 py-3 px-4 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs uppercase tracking-wider shadow-lg transition-transform active:scale-95">
+                    Next Metropolis →
+                </button>
+                <button id="btnVictoryOvertime" data-i18n="vic_overtime" class="py-3 px-5 rounded-full bg-black/10 dark:bg-white/10 font-extrabold text-xs uppercase tracking-wider transition-transform active:scale-95">
+                    Keep Playing (Highscore)
                 </button>
             </div>
         </div>

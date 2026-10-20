@@ -32,11 +32,16 @@
 
 ## ✨ Key Features & Game Design
 
-### 🎯 Minimalist Start → Escalating Late-Game Chaos
-- **Calm Opening (Day 1):** Begin closely zoomed in (`1.75×`) on the city center with **1 Main Depot (`HQ`)**, **2 nearby `S`-Customer Stations** on the same river bank, **3 Colored Logistics Lines**, **3 Cyberbikes**, **3 Bridges**, **1 Cargo Drone**, and **1 `S` Micro-Hub**.
+### 🎯 3-Act Dramaturgical Arc: Win & Lose Conditions
+- **Minimalist Opening (Day 1):** Begin closely zoomed in (`1.75×`) on the city center with **1 Main Depot (`HQ`, capacity 24)**, **2 nearby `S`-Customer Stations**, **2 Colored Logistics Lines**, **2 Cyberbikes**, **1 Bridge**, and **1 Cargo Drone**.
+- **3-Star City Mastery Win Condition (`100` ★ / `220` ★★ / `350` ★★★ Deliveries):**
+  - **★☆☆ Bronze (`100` Deliveries):** Master the initial urban core and first `L` parcels.
+  - **★★☆ Silver (`220` Deliveries):** Survive cross-river sprawl, daily **Rush Hour waves (`16:00–20:00`)**, and heavy `XL` freight hubs.
+  - **★★★ Gold Victory (`350` Deliveries):** Master peak metropolis density! Unlocks the **Metropolis Mastered (`★★★`)** victory screen, saves your city medal & best score to `localStorage` (shown in the 30-City Browser), and lets you advance to the **Next Metropolis** or continue into **Highscore Overtime**.
+- **Dual Lose Conditions (Real Tactical Stakes):**
+  1. **Customer Station Overload:** As soon as an `S`/`L` station accumulates **4 waiting orders** (or **3 waiting orders** at an `XL` station), a pulsing red countdown ring begins ticking (`~22s` down to `~6.5s` under heavy backlog). Delivering a single parcel buys only a brief `-14%` breather—you must bring the queue below threshold to clear the alarm!
+  2. **Depot / Hub Gridlock:** If your lines fail to drain cargo fast enough and any **Main Depot (`HQ`, cap 24)** or **Transfer Hub (`S: 6`, `L: 12`, `XL: 20`)** exceeds **85% capacity**, the depot itself enters a red Gridlock Countdown!
 - **Automatic Director Camera:** No manual panning required—the camera automatically frames all active stations and smoothly zooms out (`1.75× → 0.58×`) using critically damped interpolation as new districts emerge across the map.
-- **Dynamic Supply Expansion:** In **Week 3 (Day 15)** and **Week 5 (Day 29)**, new **Main Supply Depots (`HQ`)** open in outer districts to support your expanding metropolis.
-- **Urgency & Rush Hour Waves:** Daily rush hours (`16:00–20:00`) accelerate order demand. When a station accumulates more than 5 waiting packages, a radial countdown ring begins ticking—prioritizing packages for the most urgent stations first.
 
 ---
 
