@@ -377,20 +377,31 @@ function triggerVictoryModal() {
 
 let selectedStartCityIndex = 0;
 let selectedStartDifficulty = 'hard';
+let selectedStartRegion = 'all';
 let hasStartedFirstGame = false;
 let preScreenGameSpeed = 1;
+
+const REGION_COUNTRIES = {
+    europe: ['Deutschland', 'Österreich', 'Schweiz', 'Frankreich', 'Großbritannien', 'Niederlande', 'Italien', 'Spanien', 'Portugal', 'Tschechien', 'Schweden', 'Türkei', 'Griechenland', 'Dänemark', 'Polen'],
+    china: ['China'],
+    asiapac: ['Japan', 'Südkorea', 'Singapur', 'Indien', 'VAE', 'Thailand', 'Taiwan', 'Vietnam', 'Philippinen', 'Indonesien', 'Australien'],
+    americas_africa: ['USA', 'Brasilien', 'Argentinien', 'Kanada', 'Mexiko', 'Ägypten', 'Südafrika', 'Nigeria', 'Kenia']
+};
+
+function matchesRegionFilter(city, region) {
+    if (!region || region === 'all') return true;
+    const list = REGION_COUNTRIES[region];
+    return list ? list.includes(city.country) : true;
+}
 
 function updateStartScreenLaunchButton() {
     const btnLabel = document.getElementById('startScreenBtnLabel');
     const city = CITIES[selectedStartCityIndex] || CITIES[0];
     if (!btnLabel || !city) return;
-    const isUnchangedRunningGame = hasStartedFirstGame &&
-        selectedStartCityIndex === state.cityIndex &&
-        selectedStartDifficulty === state.difficulty;
-    if (isUnchangedRunningGame) {
-        btnLabel.textContent = `${t('help_continue')} (${city.name})`;
+    if (hasStartedFirstGame) {
+        btnLabel.textContent = `${t('help_continue')} · ${city.name}`;
     } else {
-        btnLabel.textContent = `${t('upg_select')}: ${city.name}`;
+        btnLabel.textContent = `${city.name}  —  ${city.country}`;
     }
 }
 
@@ -404,8 +415,9 @@ function renderStartScreenDifficulty() {
     const icons = { joke: '🤡', easy: '🌱', hard: '⚡', hardcore: '🔥', chuck: '🤠' };
 
     const activeDiff = selectedStartDifficulty || state.difficulty || 'hard';
+    const curSpec = DIFFICULTY_SPECS[activeDiff] || DIFFICULTY_SPECS.hard;
     if (summaryEl) {
-        summaryEl.textContent = `— ${t(`diff_${activeDiff}_desc`)}`;
+        summaryEl.innerHTML = `<span style="color:${curSpec.color}">${icons[activeDiff]} ${t(`diff_${activeDiff}_name`)}</span> &nbsp;·&nbsp; ★ ${curSpec.starTargets.join(' / ')} &nbsp;·&nbsp; <span class="opacity-80">${t(`diff_${activeDiff}_desc`)}</span>`;
     }
 
     tiers.forEach((tierId) => {
@@ -413,35 +425,63 @@ function renderStartScreenDifficulty() {
         const isCurrent = activeDiff === tierId;
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = `rounded-2xl p-2.5 text-left transition-all flex flex-col justify-between cursor-pointer ${
+        btn.className = `px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all flex items-center gap-1.5 cursor-pointer ${
             isCurrent
-                ? 'bg-white shadow-md ring-2 ring-amber-500 scale-[1.02]'
-                : 'bg-black/5 hover:bg-black/10 opacity-80 hover:opacity-100'
+                ? 'text-white shadow-md scale-[1.04]'
+                : 'text-[#23272E]/70 hover:text-[#23272E] hover:bg-black/5'
         }`;
+        if (isCurrent) {
+            btn.style.backgroundColor = spec.color;
+        }
         btn.innerHTML = `
-            <div class="flex items-center justify-between gap-1.5 mb-1">
-                <span class="font-extrabold text-xs flex items-center gap-1">
-                    <span>${icons[tierId]}</span>
-                    <span>${t(`diff_${tierId}_name`)}</span>
-                </span>
-                <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold text-white uppercase" style="background:${spec.color}">
-                    ${t(`diff_${tierId}_short`)}
-                </span>
-            </div>
-            <div class="flex items-center justify-between text-[10px] font-mono-num opacity-75">
-                <span>★ ${spec.starTargets.join('/')}</span>
-                <span class="text-rose-600 font-bold">≥${spec.maxOrdersSL} (${spec.maxOrdersXL} XL)</span>
-            </div>
+            <span>${icons[tierId]}</span>
+            <span>${t(`diff_${tierId}_short`)}</span>
         `;
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            // Difficulty can only be changed on the Start Screen, never during a running game
             if (hasStartedFirstGame) return;
             selectedStartDifficulty = tierId;
+            state.difficulty = tierId;
+            try { localStorage.setItem('miniDelivery_difficulty', tierId); } catch (err) {}
             renderStartScreenDifficulty();
             updateStartScreenLaunchButton();
+            updateGoalUI();
         });
         container.appendChild(btn);
+    });
+}
+
+function renderStartScreenRegionTabs() {
+    const tabWrap = document.getElementById('startRegionTabs');
+    if (!tabWrap) return;
+    tabWrap.innerHTML = '';
+
+    const regions = [
+        { id: 'all', label: `All (${CITIES.length})` },
+        { id: 'europe', label: 'Europe' },
+        { id: 'china', label: 'China (9)' },
+        { id: 'asiapac', label: 'Asia-Pacific' },
+        { id: 'americas_africa', label: 'Americas & Africa' }
+    ];
+
+    regions.forEach(reg => {
+        const active = selectedStartRegion === reg.id;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `px-3 py-1 rounded-full text-[11px] font-extrabold transition-all cursor-pointer ${
+            active
+                ? 'bg-[#23272E] text-white shadow-sm'
+                : 'text-[#23272E]/65 hover:text-[#23272E]'
+        }`;
+        btn.textContent = reg.label;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectedStartRegion = reg.id;
+            renderStartScreenRegionTabs();
+            const searchInput = document.getElementById('startCitySearchInput');
+            renderStartScreenCities(searchInput ? searchInput.value : '');
+        });
+        tabWrap.appendChild(btn);
     });
 }
 
@@ -452,6 +492,9 @@ function renderStartScreenCities(filterText = '') {
     const q = filterText.trim().toLowerCase();
 
     CITIES.forEach((city, idx) => {
+        if (!q && !matchesRegionFilter(city, selectedStartRegion)) {
+            return;
+        }
         if (q && !city.name.toLowerCase().includes(q) &&
             !city.country.toLowerCase().includes(q) &&
             !city.riverName.toLowerCase().includes(q)) {
@@ -464,27 +507,27 @@ function renderStartScreenCities(filterText = '') {
 
         const card = document.createElement('button');
         card.type = 'button';
-        card.className = `rounded-2xl p-2.5 text-left flex items-center gap-3 transition-all cursor-pointer ${
-            isSelected
-                ? 'bg-white shadow-md ring-2 ring-amber-500 scale-[1.01]'
-                : 'bg-black/5 hover:bg-black/10 opacity-90 hover:opacity-100'
-        }`;
+        card.dataset.cityIdx = idx;
+        card.className = `city-postcard w-48 sm:w-52 flex-shrink-0 rounded-[24px] p-3 text-left flex flex-col gap-2 cursor-pointer ${isSelected ? 'selected' : ''}`;
 
         const miniCanvas = document.createElement('canvas');
-        miniCanvas.width = 110;
-        miniCanvas.height = 72;
-        miniCanvas.className = 'w-[84px] h-[54px] rounded-xl flex-shrink-0 border border-black/10';
+        miniCanvas.width = 168;
+        miniCanvas.height = 88;
+        miniCanvas.className = 'w-full h-[84px] rounded-2xl border border-black/5';
         renderMiniMapPreview(miniCanvas, city);
 
         const info = document.createElement('div');
-        info.className = 'min-w-0 flex-1';
+        info.className = 'w-full px-0.5';
         info.innerHTML = `
             <div class="flex items-center justify-between gap-1">
-                <span class="font-extrabold text-xs sm:text-sm truncate">${city.name}</span>
+                <span class="font-extrabold text-sm text-[#23272E] truncate">${city.name}</span>
                 <span class="text-[10px] font-mono-num text-amber-500 font-extrabold">${starStr}</span>
             </div>
-            <div class="text-[10px] opacity-65 truncate mt-0.5">${city.riverName}</div>
-            <div class="text-[10px] font-mono-num opacity-50 mt-0.5">${rec.bestScore > 0 ? `Best: ${rec.bestScore} · ${city.country}` : city.country}</div>
+            <div class="text-[10px] font-semibold text-[#6E7685] truncate mt-0.5">${city.riverName}</div>
+            <div class="flex items-center justify-between text-[10px] font-mono-num opacity-55 mt-1">
+                <span>${city.country}</span>
+                <span>${rec.bestScore > 0 ? `★ ${rec.bestScore}` : ''}</span>
+            </div>
         `;
 
         card.appendChild(miniCanvas);
@@ -492,12 +535,20 @@ function renderStartScreenCities(filterText = '') {
 
         card.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (hasStartedFirstGame) return;
             selectedStartCityIndex = idx;
+            // Live-preview the selected city's river network on the background canvas!
+            initCity(idx);
+            setGameSpeed(0);
             updateStartScreenLaunchButton();
-            renderStartScreenCities(filterText);
+            container.querySelectorAll('.city-postcard').forEach(el => {
+                el.classList.toggle('selected', Number(el.dataset.cityIdx) === idx);
+            });
+            card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
         });
         card.addEventListener('dblclick', (e) => {
             e.stopPropagation();
+            if (hasStartedFirstGame) return;
             selectedStartCityIndex = idx;
             launchGameFromStartScreen(true);
         });
@@ -525,18 +576,23 @@ function openStartScreen(asFullStartScreen = false) {
     selectedStartCityIndex = state.cityIndex || 0;
     selectedStartDifficulty = state.difficulty || 'hard';
 
-    // During a running game, hide Difficulty & City switching so difficulty can ONLY be changed on the Start Screen
-    const diffSec = document.getElementById('startDifficultySection');
-    const citySec = document.getElementById('startCitiesSection');
-    const closeBtn = document.getElementById('btnCloseStartScreen');
-    if (diffSec) diffSec.classList.toggle('hidden', hasStartedFirstGame);
-    if (citySec) citySec.classList.toggle('hidden', hasStartedFirstGame);
-    if (closeBtn) closeBtn.classList.toggle('hidden', !hasStartedFirstGame);
+    // When a game is running, ? opens the pure Visual Guide card (Difficulty & City selection remain locked to the Start Screen)
+    const setupView = document.getElementById('startSetupView');
+    const helpView = document.getElementById('helpGuideView');
+    const bottomLegend = document.getElementById('startBottomLegend');
+    if (setupView) setupView.classList.toggle('hidden', hasStartedFirstGame);
+    if (helpView) helpView.classList.toggle('hidden', !hasStartedFirstGame);
+    if (bottomLegend) bottomLegend.classList.toggle('hidden', hasStartedFirstGame);
 
     const searchInput = document.getElementById('startCitySearchInput');
     if (searchInput) searchInput.value = '';
-    renderStartScreenDifficulty();
-    renderStartScreenCities('');
+    if (!hasStartedFirstGame) {
+        renderStartScreenRegionTabs();
+        renderStartScreenDifficulty();
+        renderStartScreenCities('');
+    } else {
+        updateStartScreenLaunchButton();
+    }
     introEl.style.display = 'flex';
     introEl.classList.remove('hidden', 'intro-hide');
 }
@@ -884,11 +940,36 @@ if (btnCloseStartScreen) {
     });
 }
 
+const btnCarouselLeft = document.getElementById('btnCarouselLeft');
+const btnCarouselRight = document.getElementById('btnCarouselRight');
+const startCarouselEl = document.getElementById('startCityGridContainer');
+
+if (btnCarouselLeft && startCarouselEl) {
+    btnCarouselLeft.addEventListener('click', (e) => {
+        e.stopPropagation();
+        startCarouselEl.scrollBy({ left: -440, behavior: 'smooth' });
+    });
+}
+if (btnCarouselRight && startCarouselEl) {
+    btnCarouselRight.addEventListener('click', (e) => {
+        e.stopPropagation();
+        startCarouselEl.scrollBy({ left: 440, behavior: 'smooth' });
+    });
+}
+if (startCarouselEl) {
+    startCarouselEl.addEventListener('wheel', (e) => {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+            e.preventDefault();
+            startCarouselEl.scrollLeft += e.deltaY;
+        }
+    }, { passive: false });
+}
+
 const introSplashEl = document.getElementById('introSplash');
 if (introSplashEl) {
     introSplashEl.addEventListener('click', (e) => {
-        // Clicking the backdrop outside the card dismisses the screen and resumes/starts the game
-        if (e.target === introSplashEl) {
+        // When viewing Help during a running game, clicking anywhere dismisses Help & resumes
+        if (hasStartedFirstGame || e.target === introSplashEl) {
             closeStartScreenAndResume();
         }
     });
@@ -1063,6 +1144,7 @@ window.onload = function () {
     } else if (introEl) {
         selectedStartCityIndex = state.cityIndex || 0;
         selectedStartDifficulty = state.difficulty || 'hard';
+        renderStartScreenRegionTabs();
         renderStartScreenDifficulty();
         renderStartScreenCities('');
         setGameSpeed(0);

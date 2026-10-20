@@ -281,6 +281,38 @@ canvas.dragging-active {
     border-radius: 9999px;
 }
 
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Minimalist Dinosaur Polo Club Postcard & Capsule Transitions */
+.city-postcard {
+    background: rgba(255, 255, 255, 0.72);
+    border: 1.5px solid rgba(35, 39, 46, 0.07);
+    box-shadow: 0 8px 24px -6px rgba(20, 24, 32, 0.08);
+    transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+                background-color 0.28s ease,
+                box-shadow 0.32s ease,
+                border-color 0.28s ease;
+}
+
+.city-postcard:hover {
+    transform: translateY(-5px) scale(1.02);
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 14px 30px -8px rgba(20, 24, 32, 0.14);
+}
+
+.city-postcard.selected {
+    background: #FFFFFF;
+    border-color: #F59E0B;
+    box-shadow: 0 0 0 2.5px #F59E0B, 0 16px 34px -8px rgba(245, 158, 11, 0.25);
+    transform: translateY(-6px) scale(1.03);
+}
+
 /* Invisible High-End Mobile Touch Hit-Area Expansion & Safe-Area Ergonomics */
 .dpc-icon-btn,
 .dpc-token,
