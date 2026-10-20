@@ -375,11 +375,20 @@ function triggerVictoryModal() {
 }
 
 let selectedStartCityIndex = 0;
+let selectedStartDifficulty = 'hard';
+let hasStartedFirstGame = false;
+let preScreenGameSpeed = 1;
 
 function updateStartScreenLaunchButton() {
     const btnLabel = document.getElementById('startScreenBtnLabel');
     const city = CITIES[selectedStartCityIndex] || CITIES[0];
-    if (btnLabel && city) {
+    if (!btnLabel || !city) return;
+    const isUnchangedRunningGame = hasStartedFirstGame &&
+        selectedStartCityIndex === state.cityIndex &&
+        selectedStartDifficulty === state.difficulty;
+    if (isUnchangedRunningGame) {
+        btnLabel.textContent = `${t('help_continue')} (${city.name})`;
+    } else {
         btnLabel.textContent = `${t('upg_select')}: ${city.name}`;
     }
 }
@@ -393,14 +402,14 @@ function renderStartScreenDifficulty() {
     const tiers = ['joke', 'easy', 'hard', 'hardcore', 'chuck'];
     const icons = { joke: '🤡', easy: '🌱', hard: '⚡', hardcore: '🔥', chuck: '🤠' };
 
-    const curSpec = DIFFICULTY_SPECS[state.difficulty] || DIFFICULTY_SPECS.hard;
+    const activeDiff = selectedStartDifficulty || state.difficulty || 'hard';
     if (summaryEl) {
-        summaryEl.textContent = `— ${t(`diff_${state.difficulty}_desc`)}`;
+        summaryEl.textContent = `— ${t(`diff_${activeDiff}_desc`)}`;
     }
 
     tiers.forEach((tierId) => {
         const spec = DIFFICULTY_SPECS[tierId];
-        const isCurrent = state.difficulty === tierId;
+        const isCurrent = activeDiff === tierId;
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = `rounded-2xl p-2.5 text-left transition-all flex flex-col justify-between cursor-pointer ${
@@ -425,10 +434,9 @@ function renderStartScreenDifficulty() {
         `;
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            state.difficulty = tierId;
-            try { localStorage.setItem('miniDelivery_difficulty', tierId); } catch (err) {}
+            selectedStartDifficulty = tierId;
             renderStartScreenDifficulty();
-            updateGoalUI();
+            updateStartScreenLaunchButton();
         });
         container.appendChild(btn);
     });
@@ -488,7 +496,7 @@ function renderStartScreenCities(filterText = '') {
         card.addEventListener('dblclick', (e) => {
             e.stopPropagation();
             selectedStartCityIndex = idx;
-            launchGameFromStartScreen();
+            launchGameFromStartScreen(true);
         });
         container.appendChild(card);
     });
@@ -496,11 +504,20 @@ function renderStartScreenCities(filterText = '') {
     updateStartScreenLaunchButton();
 }
 
+function isStartScreenOpen() {
+    const introEl = document.getElementById('introSplash');
+    return Boolean(introEl && !introEl.classList.contains('hidden') && introEl.style.display !== 'none');
+}
+
 function openStartScreen() {
     const introEl = document.getElementById('introSplash');
     if (!introEl) return;
+    if (!isStartScreenOpen()) {
+        preScreenGameSpeed = state.gameSpeed || 1;
+    }
     setGameSpeed(0);
     selectedStartCityIndex = state.cityIndex || 0;
+    selectedStartDifficulty = state.difficulty || 'hard';
     const searchInput = document.getElementById('startCitySearchInput');
     if (searchInput) searchInput.value = '';
     renderStartScreenDifficulty();
@@ -509,17 +526,41 @@ function openStartScreen() {
     introEl.classList.remove('hidden', 'intro-hide');
 }
 
-function launchGameFromStartScreen() {
+function hideStartScreenOverlay() {
     const introEl = document.getElementById('introSplash');
-    initCity(selectedStartCityIndex);
-    if (introEl) {
-        introEl.classList.add('intro-hide');
-        setTimeout(() => {
-            introEl.classList.add('hidden');
-            introEl.style.display = 'none';
-        }, 420);
+    if (!introEl) return;
+    introEl.classList.add('intro-hide');
+    setTimeout(() => {
+        introEl.classList.add('hidden');
+        introEl.style.display = 'none';
+    }, 360);
+}
+
+function closeStartScreenAndResume() {
+    if (!hasStartedFirstGame) {
+        launchGameFromStartScreen(true);
+        return;
     }
-    setGameSpeed(1);
+    hideStartScreenOverlay();
+    setGameSpeed(preScreenGameSpeed || 1);
+}
+
+function launchGameFromStartScreen(forceRestart = false) {
+    const needsNewGame = !hasStartedFirstGame ||
+        forceRestart ||
+        selectedStartCityIndex !== state.cityIndex ||
+        selectedStartDifficulty !== state.difficulty;
+
+    if (needsNewGame) {
+        state.difficulty = selectedStartDifficulty || state.difficulty || 'hard';
+        try { localStorage.setItem('miniDelivery_difficulty', state.difficulty); } catch (err) {}
+        hasStartedFirstGame = true;
+        initCity(selectedStartCityIndex);
+        setGameSpeed(1);
+    } else {
+        setGameSpeed(preScreenGameSpeed || 1);
+    }
+    hideStartScreenOverlay();
 }
 
 document.getElementById('btnVictoryNextCity').addEventListener('click', () => {
@@ -812,19 +853,29 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-const btnOpenStartScreen = document.getElementById('btnOpenStartScreen');
-if (btnOpenStartScreen) {
-    btnOpenStartScreen.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openStartScreen();
-    });
-}
-
 const btnStartGameMain = document.getElementById('btnStartGameMain');
 if (btnStartGameMain) {
     btnStartGameMain.addEventListener('click', (e) => {
         e.stopPropagation();
-        launchGameFromStartScreen();
+        launchGameFromStartScreen(false);
+    });
+}
+
+const btnCloseStartScreen = document.getElementById('btnCloseStartScreen');
+if (btnCloseStartScreen) {
+    btnCloseStartScreen.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeStartScreenAndResume();
+    });
+}
+
+const introSplashEl = document.getElementById('introSplash');
+if (introSplashEl) {
+    introSplashEl.addEventListener('click', (e) => {
+        // Clicking the backdrop outside the card dismisses the screen and resumes/starts the game
+        if (e.target === introSplashEl) {
+            closeStartScreenAndResume();
+        }
     });
 }
 
@@ -843,20 +894,13 @@ document.getElementById('citySearchInput').addEventListener('input', (e) => {
     buildCityModalGrid(e.target.value);
 });
 
-let inlineHelpStep = 0;
 document.getElementById('btnOpenHelp').addEventListener('click', (e) => {
     e.stopPropagation();
-    const hintBanner = document.getElementById('uiHintBanner');
-    const hintEl = document.getElementById('uiHintText');
-    if (!hintBanner || !hintEl) return;
-    hintBanner.classList.remove('opacity-0');
-    const messages = [
-        `${t('credits_coding')} felix schmidt (www.felixschmidt.org) · ${t('credits_music')} enzo cage`,
-        `S (●): Drone / Bike / Car · L (■): Bike / Car · XL (◆): Cybercar only`,
-        t('hint_initial')
-    ];
-    hintEl.textContent = messages[inlineHelpStep % messages.length];
-    inlineHelpStep++;
+    if (isStartScreenOpen()) {
+        closeStartScreenAndResume();
+    } else {
+        openStartScreen();
+    }
 });
 document.getElementById('btnCloseHelp').addEventListener('click', () => {
     document.getElementById('helpModal').classList.add('hidden');
@@ -1003,6 +1047,7 @@ window.onload = function () {
         }
     } else if (introEl) {
         selectedStartCityIndex = state.cityIndex || 0;
+        selectedStartDifficulty = state.difficulty || 'hard';
         renderStartScreenDifficulty();
         renderStartScreenCities('');
         setGameSpeed(0);

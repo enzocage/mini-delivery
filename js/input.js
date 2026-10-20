@@ -1277,6 +1277,9 @@ window.addEventListener('keydown', (e) => {
         setGameSpeed(state.gameSpeed === 0 ? 1 : 0);
     } else if (e.key === 'Escape') {
         setActiveTool('route');
+        if (typeof isStartScreenOpen === 'function' && isStartScreenOpen()) {
+            closeStartScreenAndResume();
+        }
         document.getElementById('cityModal').classList.add('hidden');
         document.getElementById('helpModal').classList.add('hidden');
         document.getElementById('nodeInspector').classList.add('hidden');
