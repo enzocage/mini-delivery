@@ -719,26 +719,24 @@ canvas.addEventListener('pointerdown', (e) => {
         return;
     }
 
-    // 4. PRIORITY 4: Clicking/Dragging from a Station Node (+ Long-Press Inspector on Touch)
+    // 4. PRIORITY 4: Clicking/Dragging from a Station Node (No Popup Windows!)
     if (clickedNode) {
-        if (clickedNode.kind === 'DEPOT') {
-            openNodeInspector(clickedNode);
-        } else {
-            document.getElementById('nodeInspector').classList.add('hidden');
+        document.getElementById('nodeInspector').classList.add('hidden');
+
+        // Right-click on a placed S/L/XL Hub dismantles it directly without any popup
+        if (e.button === 2 && clickedNode.kind === 'DEPOT' && clickedNode.depotType !== 'MAIN') {
+            dismantleDepotNode(clickedNode);
+            return;
         }
 
         if (isTouch) {
             longPressTimer = setTimeout(() => {
                 triggerHaptic([12, 20, 14]);
                 state.ripples.push({ x: clickedNode.x, y: clickedNode.y, r: clickedNode.radius, maxR: 54, color: '#F59E0B', alpha: 0.9 });
-                if (clickedNode.kind === 'DEPOT') {
-                    openNodeInspector(clickedNode);
-                } else {
-                    const servingLine = state.lines.slice(0, state.unlockedLines).find(l => l.nodeIds.includes(clickedNode.id));
-                    if (servingLine) {
-                        state.selectedLineId = servingLine.id;
-                        updateAllUI();
-                    }
+                const servingLine = state.lines.slice(0, state.unlockedLines).find(l => l.nodeIds.includes(clickedNode.id));
+                if (servingLine) {
+                    state.selectedLineId = servingLine.id;
+                    updateAllUI();
                 }
             }, 420);
         }

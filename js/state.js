@@ -380,6 +380,10 @@ function initCity(cityIdx) {
     document.getElementById('nodeInspector').classList.add('hidden');
     const vicModal = document.getElementById('victoryModal');
     if (vicModal) vicModal.classList.add('hidden');
+    const upgBar = document.getElementById('inlineUpgradeBar');
+    if (upgBar) { upgBar.classList.add('hidden'); upgBar.innerHTML = ''; }
+    const statusBar = document.getElementById('inlineStatusBar');
+    if (statusBar) { statusBar.classList.add('hidden'); statusBar.innerHTML = ''; }
 
     const hintBanner = document.getElementById('uiHintBanner');
     hintBanner.classList.remove('opacity-0');

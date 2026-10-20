@@ -27,56 +27,16 @@ function setActiveTool(toolName) {
 }
 
 function openNodeInspector(node) {
-    if (!node || node.kind !== 'DEPOT') return;
-    state.inspectedNodeId = node.id;
+    // Popup-free design: never open the floating node inspector window
+    state.inspectedNodeId = null;
     const panel = document.getElementById('nodeInspector');
-    panel.classList.remove('hidden');
-
-    const spec = DEPOT_SPECS[node.depotType];
-    const badge = document.getElementById('inspBadge');
-    badge.textContent = node.depotType === 'MAIN' ? 'HQ' : node.depotType;
-    badge.style.backgroundColor = spec.color;
-
-    document.getElementById('inspTitle').textContent = getDepotLabel(node.depotType);
-    document.getElementById('inspSubtitle').textContent = t('insp_packages', { cur: node.storage.length, max: node.capacity });
-
-    const sCount = node.storage.filter(p => p.size === 'S').length;
-    const lCount = node.storage.filter(p => p.size === 'L').length;
-    const xlCount = node.storage.filter(p => p.size === 'XL').length;
-    const droneCount = state.drones.filter(d => d.homeNodeId === node.id).length;
-
-    document.getElementById('inspBody').innerHTML = `
-        <div class="flex items-center justify-between py-1 border-b border-black/5 dark:border-white/5">
-            <span class="opacity-65">${t('insp_stock')}</span>
-            <span class="font-mono-num font-bold">S:${sCount} · L:${lCount} · XL:${xlCount}</span>
-        </div>
-        <div class="flex items-center justify-between py-1">
-            <span class="opacity-65">${t('insp_drones')}</span>
-            <span class="font-mono-num font-bold text-cyan-500">${droneCount}</span>
-        </div>
-    `;
-
-    document.getElementById('btnInspRemoveNode').style.display = node.depotType === 'MAIN' ? 'none' : 'block';
+    if (panel) panel.classList.add('hidden');
 }
 
-document.getElementById('btnCloseInspector').addEventListener('click', () => {
-    state.inspectedNodeId = null;
-    document.getElementById('nodeInspector').classList.add('hidden');
-});
-
-document.getElementById('btnInspAddDrone').addEventListener('click', () => {
-    const node = state.nodes.find(n => n.id === state.inspectedNodeId);
-    if (node) {
-        stationDroneAtNode(node, false);
-        openNodeInspector(node);
-    }
-});
-
-document.getElementById('btnInspRemoveNode').addEventListener('click', () => {
-    const nodeIdx = state.nodes.findIndex(n => n.id === state.inspectedNodeId);
+function dismantleDepotNode(node) {
+    if (!node || node.kind !== 'DEPOT' || node.depotType === 'MAIN') return;
+    const nodeIdx = state.nodes.findIndex(n => n.id === node.id);
     if (nodeIdx === -1) return;
-    const node = state.nodes[nodeIdx];
-    if (node.depotType === 'MAIN') return;
 
     state.inventory[`depot_${node.depotType}`]++;
     for (let i = state.drones.length - 1; i >= 0; i--) {
@@ -97,11 +57,30 @@ document.getElementById('btnInspRemoveNode').addEventListener('click', () => {
             }
         }
     }
+    state.ripples.push({ x: node.x, y: node.y, r: node.radius, maxR: 42, color: '#F43F5E', alpha: 0.85 });
+    showFloatingText(node.x, node.y - 18, `+1 ${getDepotLabel(node.depotType)}`, '#F43F5E');
     state.nodes.splice(nodeIdx, 1);
     state.inspectedNodeId = null;
     document.getElementById('nodeInspector').classList.add('hidden');
     sfx.playDisconnect();
     updateAllUI();
+}
+
+document.getElementById('btnCloseInspector').addEventListener('click', () => {
+    state.inspectedNodeId = null;
+    document.getElementById('nodeInspector').classList.add('hidden');
+});
+
+document.getElementById('btnInspAddDrone').addEventListener('click', () => {
+    const node = state.nodes.find(n => n.id === state.inspectedNodeId);
+    if (node) {
+        stationDroneAtNode(node, false);
+    }
+});
+
+document.getElementById('btnInspRemoveNode').addEventListener('click', () => {
+    const node = state.nodes.find(n => n.id === state.inspectedNodeId);
+    if (node) dismantleDepotNode(node);
 });
 
 document.getElementById('btnClearSelectedLine').addEventListener('click', () => {
@@ -286,43 +265,50 @@ function getWeeklyUpgradeChoices() {
     return pool;
 }
 
-function triggerWeeklyUpgradeModal() {
-    const prevSpeed = state.gameSpeed || 1;
-    setGameSpeed(0);
-    sfx.playWeeklyChord();
-    updateAllUI();
+let pendingWeeklyUpgrade = null;
 
-    document.getElementById('upgradeWeekTitle').textContent = t('upg_week', { w: state.weekCount });
-    document.getElementById('upgradeWeekSub').textContent = t('upg_sub');
-    const container = document.getElementById('upgradeCardsContainer');
-    container.innerHTML = '';
+function triggerWeeklyUpgradeModal() {
+    sfx.playWeeklyChord();
+    // If a previous weekly upgrade was still unpicked in the inline bar, auto-apply it so the player never loses resources
+    if (pendingWeeklyUpgrade) {
+        pendingWeeklyUpgrade.apply();
+        pendingWeeklyUpgrade = null;
+    }
 
     const choices = getWeeklyUpgradeChoices();
-    choices.forEach((pkg, idx) => {
-        const card = document.createElement('button');
-        card.style.animationDelay = `${idx * 90}ms`;
-        card.className = 'dpc-pill upgrade-card-anim rounded-[32px] p-5 text-center flex flex-col items-center justify-between hover:scale-105 active:scale-95 cursor-pointer';
-        card.innerHTML = `
-            <div class="w-16 h-16 rounded-full flex items-center justify-center text-white font-extrabold text-sm shadow-lg mb-3" style="background:${pkg.badgeColor}">
-                ${pkg.iconText}
-            </div>
-            <div class="text-[11px] font-extrabold uppercase tracking-wider opacity-55 mb-1">${pkg.title}</div>
-            <h3 class="text-base font-extrabold leading-snug mb-2">${pkg.subtitle}</h3>
-            <p class="text-xs opacity-70 leading-relaxed mb-4">${pkg.desc}</p>
-            <div class="px-5 py-2 rounded-full text-xs font-extrabold text-white shadow" style="background:${pkg.badgeColor}">
-                ${t('upg_select')}
-            </div>
-        `;
-        card.addEventListener('click', () => {
+    const upgBar = document.getElementById('inlineUpgradeBar');
+    const hintBanner = document.getElementById('uiHintBanner');
+    if (hintBanner) hintBanner.classList.remove('opacity-0');
+
+    if (!upgBar) {
+        if (choices[0]) choices[0].apply();
+        updateAllUI();
+        return;
+    }
+
+    pendingWeeklyUpgrade = choices[0] || null;
+    upgBar.innerHTML = `<span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-500 px-1.5">${t('upg_week', { w: state.weekCount })}:</span>`;
+
+    choices.forEach((pkg) => {
+        const btn = document.createElement('button');
+        btn.className = 'px-3 py-1 rounded-full text-[11px] font-extrabold text-white shadow-sm hover:scale-105 active:scale-95 transition-transform flex items-center gap-1.5 cursor-pointer';
+        btn.style.background = pkg.badgeColor;
+        btn.innerHTML = `<span>${pkg.iconText}</span><span class="opacity-90 font-semibold hidden sm:inline">· ${pkg.subtitle}</span>`;
+        btn.title = `${pkg.title}: ${pkg.subtitle}`;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            pendingWeeklyUpgrade = null;
             pkg.apply();
-            document.getElementById('upgradeModal').classList.add('hidden');
+            upgBar.classList.add('hidden');
+            upgBar.innerHTML = '';
+            showFloatingText(state.cam.x, state.cam.y - 24, `✓ ${pkg.subtitle}`, pkg.badgeColor);
             updateAllUI();
-            setGameSpeed(prevSpeed);
         });
-        container.appendChild(card);
+        upgBar.appendChild(btn);
     });
 
-    document.getElementById('upgradeModal').classList.remove('hidden');
+    upgBar.classList.remove('hidden');
+    updateAllUI();
 }
 
 function triggerGameOver(overloadedNode) {
@@ -330,107 +316,83 @@ function triggerGameOver(overloadedNode) {
     const city = currentCity();
     saveCityRecord(city.id, state.score, state.starsEarned);
 
-    document.getElementById('goTitle').textContent = t('go_title_city', { city: city.name });
-    if (overloadedNode && overloadedNode.kind === 'DEPOT') {
-        document.getElementById('goSubtitle').textContent = t('go_sub_depot', { depot: getDepotLabel(overloadedNode.depotType) });
-    } else {
-        document.getElementById('goSubtitle').textContent = t('go_sub_station', { type: overloadedNode ? overloadedNode.demandType : 'S' });
+    const statusBar = document.getElementById('inlineStatusBar');
+    const hintBanner = document.getElementById('uiHintBanner');
+    if (hintBanner) hintBanner.classList.remove('opacity-0');
+
+    if (statusBar) {
+        const reason = (overloadedNode && overloadedNode.kind === 'DEPOT')
+            ? t('go_sub_depot', { depot: getDepotLabel(overloadedNode.depotType) })
+            : t('go_title_city', { city: city.name });
+        statusBar.innerHTML = `
+            <span class="text-rose-500">⚠️ ${reason} (${state.score})</span>
+            <button id="btnInlineEndless" class="px-3 py-1 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-extrabold uppercase tracking-wider shadow transition-transform active:scale-95">${t('go_endless')}</button>
+            <button id="btnInlineRestart" class="px-3 py-1 rounded-full bg-black/10 dark:bg-white/15 text-[11px] font-extrabold uppercase tracking-wider transition-transform active:scale-95">${t('go_restart')}</button>
+        `;
+        statusBar.classList.remove('hidden');
+        document.getElementById('btnInlineEndless').addEventListener('click', (e) => {
+            e.stopPropagation();
+            statusBar.classList.add('hidden');
+            document.getElementById('btnContinueEndless').click();
+        });
+        document.getElementById('btnInlineRestart').addEventListener('click', (e) => {
+            e.stopPropagation();
+            statusBar.classList.add('hidden');
+            initCity(state.cityIndex);
+        });
     }
-    document.getElementById('goScore').textContent = state.score;
-    document.getElementById('goDays').textContent = state.dayCount;
-    document.getElementById('goDepots').textContent = state.nodes.filter(n => n.kind === 'DEPOT').length;
-    document.getElementById('gameOverModal').classList.remove('hidden');
 }
 
 function triggerVictoryModal() {
-    setGameSpeed(0);
     sfx.playWeeklyChord();
     const city = currentCity();
     const targets = getStarTargets();
     saveCityRecord(city.id, state.score, 3);
 
-    const vicTitle = document.getElementById('vicTitle');
-    const vicSubtitle = document.getElementById('vicSubtitle');
-    if (vicTitle) vicTitle.textContent = t('vic_title_city', { city: city.name });
-    if (vicSubtitle) vicSubtitle.textContent = t('vic_sub_city', { target: targets[2] });
-    document.getElementById('vicScore').textContent = state.score;
-    document.getElementById('vicDays').textContent = state.dayCount;
-    document.getElementById('vicDepots').textContent = state.nodes.filter(n => n.kind === 'DEPOT').length;
-    document.getElementById('victoryModal').classList.remove('hidden');
+    showFloatingText(state.cam.x, state.cam.y - 30, `★★★ ${t('vic_title_city', { city: city.name })}`, '#F59E0B');
+
+    const statusBar = document.getElementById('inlineStatusBar');
+    const hintBanner = document.getElementById('uiHintBanner');
+    if (hintBanner) hintBanner.classList.remove('opacity-0');
+
+    if (statusBar) {
+        statusBar.innerHTML = `
+            <span class="text-amber-500">★★★ ${t('vic_title_city', { city: city.name })} (${targets[2]})</span>
+            <button id="btnInlineNextCity" class="px-3 py-1 rounded-full bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-extrabold uppercase tracking-wider shadow transition-transform active:scale-95">${t('vic_next_city')}</button>
+            <button id="btnInlineDismissVic" class="w-5 h-5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 flex items-center justify-center text-[11px] opacity-70">✕</button>
+        `;
+        statusBar.classList.remove('hidden');
+        document.getElementById('btnInlineNextCity').addEventListener('click', (e) => {
+            e.stopPropagation();
+            statusBar.classList.add('hidden');
+            initCity((state.cityIndex + 1) % CITIES.length);
+        });
+        document.getElementById('btnInlineDismissVic').addEventListener('click', (e) => {
+            e.stopPropagation();
+            statusBar.classList.add('hidden');
+        });
+    }
 }
 
 function buildDifficultyModalGrid() {
-    const container = document.getElementById('difficultyCardsContainer');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const tiers = ['joke', 'easy', 'hard', 'hardcore', 'chuck'];
-    const icons = {
-        joke: '🤡',
-        easy: '🌱',
-        hard: '⚡',
-        hardcore: '🔥',
-        chuck: '🤠'
-    };
-
-    tiers.forEach((tierId, idx) => {
-        const spec = DIFFICULTY_SPECS[tierId];
-        const isCurrent = state.difficulty === tierId;
-        const card = document.createElement('button');
-        card.style.animationDelay = `${idx * 60}ms`;
-        card.className = `dpc-pill upgrade-card-anim rounded-[28px] p-4 text-left flex flex-col justify-between hover:scale-[1.03] active:scale-95 transition-transform cursor-pointer ${isCurrent ? 'ring-2 ring-amber-500' : ''}`;
-
-        const hqCap = Math.max(4, Math.round(DEPOT_SPECS.MAIN.cap * spec.depotCapMult));
-        card.innerHTML = `
-            <div>
-                <div class="flex items-center justify-between gap-2 mb-2">
-                    <span class="w-9 h-9 rounded-2xl flex items-center justify-center text-lg shadow-sm" style="background:${spec.color}22; color:${spec.color}">${icons[tierId]}</span>
-                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-white uppercase tracking-wider" style="background:${spec.color}">
-                        ${t(`diff_${tierId}_short`)}
-                    </span>
-                </div>
-                <h3 class="font-extrabold text-sm sm:text-base leading-tight mb-1">${t(`diff_${tierId}_name`)}</h3>
-                <p class="text-[11px] opacity-70 leading-snug mb-3">${t(`diff_${tierId}_desc`)}</p>
-
-                <div class="space-y-1.5 text-[10px] border-t border-black/10 dark:border-white/10 pt-2.5 mb-3">
-                    <div class="flex justify-between">
-                        <span class="opacity-60 font-bold">${t('diff_lbl_win')}</span>
-                        <span class="font-mono-num font-extrabold text-amber-500">${spec.starTargets.join(' / ')}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="opacity-60 font-bold">${t('diff_lbl_overload')}</span>
-                        <span class="font-mono-num font-extrabold text-rose-500">≥ ${spec.maxOrdersSL} (${spec.maxOrdersXL} XL)</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="opacity-60 font-bold">${t('diff_lbl_timer')}</span>
-                        <span class="font-mono-num font-extrabold">${spec.overloadSpeedMult}×</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="opacity-60 font-bold">${t('diff_lbl_hq')}</span>
-                        <span class="font-mono-num font-extrabold text-sky-500">${hqCap} Pkgs</span>
-                    </div>
-                </div>
-            </div>
-            <div class="w-full py-2 rounded-full text-center text-[11px] font-extrabold text-white shadow" style="background:${spec.color}">
-                ${isCurrent ? '✓ ' + t('upg_select') : t('upg_select')}
-            </div>
-        `;
-
-        card.addEventListener('click', () => {
-            state.difficulty = tierId;
-            try { localStorage.setItem('miniDelivery_difficulty', tierId); } catch (e) {}
-            document.getElementById('difficultyModal').classList.add('hidden');
-            initCity(state.cityIndex);
-            showFloatingText(state.cam.x, state.cam.y - 24, `${icons[tierId]} ${t(`diff_${tierId}_name`)}`, spec.color);
-        });
-        container.appendChild(card);
-    });
+    // Popup-free design: difficulty cycles inline on click
 }
 
-document.getElementById('btnOpenDifficulty').addEventListener('click', () => {
-    setGameSpeed(0);
-    buildDifficultyModalGrid();
-    document.getElementById('difficultyModal').classList.remove('hidden');
+function cycleDifficulty(step = 1) {
+    const tiers = ['joke', 'easy', 'hard', 'hardcore', 'chuck'];
+    const icons = { joke: '🤡', easy: '🌱', hard: '⚡', hardcore: '🔥', chuck: '🤠' };
+    const idx = tiers.indexOf(state.difficulty);
+    const nextTier = tiers[(idx + step + tiers.length) % tiers.length];
+    state.difficulty = nextTier;
+    try { localStorage.setItem('miniDelivery_difficulty', nextTier); } catch (e) {}
+    const spec = DIFFICULTY_SPECS[nextTier];
+    initCity(state.cityIndex);
+    showFloatingText(state.cam.x, state.cam.y - 24, `${icons[nextTier]} ${t(`diff_${nextTier}_name`)} · ★ ${spec.starTargets.join('/')}`, spec.color);
+}
+
+document.getElementById('btnOpenDifficulty').addEventListener('click', (e) => {
+    e.stopPropagation();
+    cycleDifficulty(e.shiftKey ? -1 : 1);
 });
 
 document.getElementById('btnCloseDifficultyModal').addEventListener('click', () => {
@@ -724,10 +686,42 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-document.getElementById('btnOpenCityModal').addEventListener('click', () => {
-    buildCityModalGrid(document.getElementById('citySearchInput').value);
-    document.getElementById('cityModal').classList.remove('hidden');
-});
+function cycleCity(step = 1) {
+    const nextIdx = (state.cityIndex + step + CITIES.length) % CITIES.length;
+    initCity(nextIdx);
+    const city = currentCity();
+    showFloatingText(state.cam.x, state.cam.y - 24, `🌍 ${nextIdx + 1}/${CITIES.length} · ${city.name} (${city.country})`, '#F59E0B');
+}
+
+const btnPrevCity = document.getElementById('btnPrevCity');
+const btnNextCity = document.getElementById('btnNextCity');
+const btnCycleCityMain = document.getElementById('btnCycleCityMain');
+const cityPillWrap = document.getElementById('btnOpenCityModal');
+
+if (btnPrevCity) {
+    btnPrevCity.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cycleCity(-1);
+    });
+}
+if (btnNextCity) {
+    btnNextCity.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cycleCity(1);
+    });
+}
+if (btnCycleCityMain) {
+    btnCycleCityMain.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cycleCity(e.shiftKey ? -1 : 1);
+    });
+}
+if (cityPillWrap) {
+    cityPillWrap.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        cycleCity(e.deltaY > 0 ? 1 : -1);
+    }, { passive: false });
+}
 
 document.getElementById('btnCloseCityModal').addEventListener('click', () => {
     document.getElementById('cityModal').classList.add('hidden');
@@ -737,8 +731,20 @@ document.getElementById('citySearchInput').addEventListener('input', (e) => {
     buildCityModalGrid(e.target.value);
 });
 
-document.getElementById('btnOpenHelp').addEventListener('click', () => {
-    document.getElementById('helpModal').classList.remove('hidden');
+let inlineHelpStep = 0;
+document.getElementById('btnOpenHelp').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const hintBanner = document.getElementById('uiHintBanner');
+    const hintEl = document.getElementById('uiHintText');
+    if (!hintBanner || !hintEl) return;
+    hintBanner.classList.remove('opacity-0');
+    const messages = [
+        `${t('credits_coding')} felix schmidt (www.felixschmidt.org) · ${t('credits_music')} enzo cage`,
+        `S (●): Drone / Bike / Car · L (■): Bike / Car · XL (◆): Cybercar only`,
+        t('hint_initial')
+    ];
+    hintEl.textContent = messages[inlineHelpStep % messages.length];
+    inlineHelpStep++;
 });
 document.getElementById('btnCloseHelp').addEventListener('click', () => {
     document.getElementById('helpModal').classList.add('hidden');

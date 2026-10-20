@@ -118,9 +118,9 @@
                 Urban Logistics &amp; Transit Network
             </p>
 
-            <!-- Credits Pill -->
+            <!-- Credits Pill (No popup links) -->
             <div class="dpc-pill rounded-2xl sm:rounded-full px-5 py-2.5 text-xs sm:text-sm font-bold text-[#23272E] shadow-md mb-5 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1">
-                <span><span data-i18n="credits_coding">coding:</span> <a href="https://www.felixschmidt.org" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="text-amber-500 font-extrabold hover:underline">felix schmidt</a> <a href="https://www.felixschmidt.org" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="opacity-65 hover:opacity-100 hover:underline font-semibold">(www.felixschmidt.org)</a></span>
+                <span><span data-i18n="credits_coding">coding:</span> <span class="text-amber-500 font-extrabold">felix schmidt</span> <span class="opacity-65 font-semibold">(www.felixschmidt.org)</span></span>
                 <span class="opacity-35">·</span>
                 <span><span data-i18n="credits_music">music:</span> <span class="text-amber-500 font-extrabold">enzo cage</span></span>
             </div>
@@ -132,13 +132,16 @@
         </div>
     </div>
 
-    <!-- MINIMALIST TOP-LEFT BAR: CITY WATERMARK, LANGUAGE & SUBTLE UTILITY ICONS -->
+    <!-- MINIMALIST TOP-LEFT BAR: INLINE CITY SWITCHER, SKILL CYCLE, LANGUAGE & SUBTLE UTILITY ICONS -->
     <div class="fixed top-4 left-4 z-20 flex items-center gap-2 pointer-events-none">
-        <button id="btnOpenCityModal" class="dpc-pill pointer-events-auto rounded-full pl-4 pr-3.5 py-2 flex items-center gap-2.5 group hover:scale-105 active:scale-95">
-            <span class="font-extrabold text-sm sm:text-base tracking-tight" id="uiCityName">Berlin</span>
-            <span class="text-[11px] opacity-50 font-semibold hidden sm:inline" id="uiCityRiver">Spree</span>
-            <svg class="w-3.5 h-3.5 opacity-55 group-hover:translate-y-0.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-        </button>
+        <div id="btnOpenCityModal" class="dpc-pill pointer-events-auto rounded-full px-2.5 py-1.5 flex items-center gap-1.5 select-none" title="Click or scroll to switch city (54 Metropolises)">
+            <button id="btnPrevCity" class="w-6 h-6 rounded-full hover:bg-black/10 dark:hover:bg-white/10 flex items-center justify-center text-xs font-extrabold opacity-65 hover:opacity-100 transition-transform active:scale-90" title="Previous City">‹</button>
+            <button id="btnCycleCityMain" class="px-1.5 py-0.5 flex items-center gap-2 hover:opacity-85 transition-opacity">
+                <span class="font-extrabold text-sm sm:text-base tracking-tight" id="uiCityName">Berlin</span>
+                <span class="text-[11px] opacity-50 font-semibold hidden sm:inline" id="uiCityRiver">Spree</span>
+            </button>
+            <button id="btnNextCity" class="w-6 h-6 rounded-full hover:bg-black/10 dark:hover:bg-white/10 flex items-center justify-center text-xs font-extrabold opacity-65 hover:opacity-100 transition-transform active:scale-90" title="Next City">›</button>
+        </div>
 
         <button id="btnOpenDifficulty" data-i18n-title="tip_difficulty" title="Difficulty / Win &amp; Lose Conditions (Joke, Easy, Hard, Hardcore, Chuck Norris)" class="dpc-pill pointer-events-auto rounded-full px-3 py-1.5 flex items-center gap-1.5 group hover:scale-105 active:scale-95">
             <svg class="w-3.5 h-3.5 text-amber-500 transition-transform group-hover:rotate-12" id="uiDiffIcon" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
@@ -239,12 +242,16 @@
         </div>
     </div>
 
-    <!-- SUBTLE FLOATING TUTORIAL / CONTEXTUAL WHISPER -->
-    <div id="uiHintBanner" class="fixed top-20 left-1/2 -translate-x-1/2 z-10 pointer-events-none transition-all duration-500">
+    <!-- SUBTLE FLOATING TUTORIAL / CONTEXTUAL WHISPER & INLINE NON-POPUP BANNERS -->
+    <div id="uiHintBanner" class="fixed top-20 left-1/2 -translate-x-1/2 z-10 pointer-events-none transition-all duration-500 flex flex-col items-center gap-2">
         <div class="dpc-pill rounded-full px-4 py-1.5 text-xs font-bold flex items-center gap-2">
             <span id="uiHintDot" class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
             <span id="uiHintText" data-i18n="hint_initial">Drag a line from the Main Depot (HQ) to the customer stations</span>
         </div>
+        <!-- Inline Non-Popup Weekly Resource Pill Bar -->
+        <div id="inlineUpgradeBar" class="hidden pointer-events-auto dpc-pill rounded-full px-3 py-1.5 flex flex-wrap items-center justify-center gap-2 shadow-lg"></div>
+        <!-- Inline Non-Popup Status Action Pill (Overload / 3-Star Mastery) -->
+        <div id="inlineStatusBar" class="hidden pointer-events-auto dpc-pill rounded-full px-4 py-1.5 flex flex-wrap items-center justify-center gap-2.5 shadow-lg text-xs font-extrabold"></div>
     </div>
 
     <!-- MINIMALIST FLOATING NODE POPOVER -->
